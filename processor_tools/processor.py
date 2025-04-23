@@ -1,5 +1,5 @@
 from pathlib import Path
-import fitz
+import os
 from typing import Dict, List, Optional
 from ..banks import UOB, HLB, MYB, RHB, PBB, CIMB
 from openpyxl import load_workbook
@@ -95,9 +95,9 @@ class CreditCardProcessor:
             new_card_map[bank].append([suffix, col])
 
         # Replace and save
-        self.CARD_ORDERED_MAP = dict(new_card_map)
+        self.excel_manager.CARD_ORDERED_MAP = dict(new_card_map)
 
-        self.excel_manager.save_card_order_map(self.CARD_ORDERED_MAP)   
+        self.excel_manager.save_card_order_map(self.excel_manager.CARD_ORDERED_MAP)   
 
 
     def parse_statement(self, pdf_path: str, password: Optional[str] = None) -> Dict[str, Dict[str, float]]:
