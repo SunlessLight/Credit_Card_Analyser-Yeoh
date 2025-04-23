@@ -78,7 +78,7 @@ class CreditCardProcessor:
             old_suffix, old_col, old_bank = self.card_global_order[i]
             old_index = column_index_from_string(old_col)
             self.card_global_order[i] = (old_suffix, get_column_letter(old_index + 1), old_bank)
-            print(self.card_global_order[i])  #debug
+            
 
         # Update the card column map
         self.card_column_map = {
@@ -87,9 +87,6 @@ class CreditCardProcessor:
         
 
         print(f"Inserted new column: {new_card} → {new_col_letter}")
-        print("Updated card_column_map:")
-        for k, v in self.card_column_map.items():
-            print(f"  {k}: {v}")
         
         from collections import defaultdict
 
@@ -123,6 +120,12 @@ class CreditCardProcessor:
         
     def write_to_excel(self, results: Dict[str, Dict[str, float]], excel_path: str, record_number: int):
         try:
+            # Validate inputs first
+            if not isinstance(record_number, int) or record_number < 1:
+                raise ValueError("Record number must be a positive integer")
+                
+            if not os.path.exists(excel_path):
+                raise FileNotFoundError(f"Excel file not found at {excel_path}")
             wb = load_workbook(excel_path)
             ws = wb.active
 

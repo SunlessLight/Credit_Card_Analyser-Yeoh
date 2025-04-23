@@ -21,18 +21,60 @@ while True:
         break
     print("❌ Invalid folder path. Please try again.")
 
+def get_bank_choice(banks):
+    while True:
+        print("\nAvailable banks:")
+        for i, bank in enumerate(banks, 1):
+            print(f"{i}. {bank}")
+        
+        try:
+            choice = input("Select bank (or 'q' to quit): ").strip()
+            if choice.lower() == 'q':
+                return None
+            
+            choice = int(choice) - 1
+            if 0 <= choice < len(banks):
+                return banks[choice]
+            print(f"❌ Please enter a number between 1 and {len(banks)}")
+        except ValueError:
+            print("❌ Invalid input. Please enter a number.")
 
+def get_pdf_choice(pdf_files):
+    while True:
+        print("\nAvailable PDF files:")
+        for i, filename in enumerate(pdf_files, 1):
+            print(f"{i}. {filename}")
+        
+        try:
+            choice = input("Select PDF file (or 'q' to quit): ").strip()
+            if choice.lower() == 'q':
+                return None
+                
+            choice = int(choice) - 1
+            if 0 <= choice < len(pdf_files):
+                return pdf_files[choice]
+            print(f"❌ Please enter a number between 1 and {len(pdf_files)}")
+        except ValueError:
+            print("❌ Invalid input. Please enter a number.")
+def get_record_number():
+    while True:
+        try:
+            num = input("Enter record number to update (1 = first, 2 = second, etc.): ").strip()
+            if num.lower() == 'q':
+                return None
+                
+            num = int(num)
+            if num >= 1:
+                return num
+            print("❌ Record number must be 1 or higher")
+        except ValueError:
+            print("❌ Please enter a valid number")
+
+        
 def main():
-    print("Available banks:")
     banks = list(CreditCardProcessor.BANK_CLASSES.keys())
-    for i, bank in enumerate(banks, 1):
-        print(f"{i}. {bank}")
-    
-    try:
-        choice = int(input("Select bank: ")) - 1
-        selected_bank = banks[choice]
-    except (IndexError, ValueError):
-        print("Invalid bank selection.")
+    selected_bank = get_bank_choice(banks)
+    if not selected_bank:
         return
 
     processor = CreditCardProcessor(selected_bank, excel_manager)
@@ -44,12 +86,12 @@ def main():
         print("No PDF files found in the folder.")
         return
     
-    print("\nAvailable PDF files:")
-    for i, filename in enumerate(pdf_files, 1):
-        print(f"{i}. {filename}")
+    selected_pdf = get_pdf_choice(pdf_files)
+    if not selected_pdf:
+        return
     
-    file_choice = int(input("Select PDF file: ")) - 1
-    selected_pdf = os.path.join(PDF_FOLDER, pdf_files[file_choice])
+    selected_pdf = os.path.join(PDF_FOLDER, selected_pdf)
+    
     password = BANK_PASSWORDS.get(selected_bank)
 
     # Ask user only if not pre-defined
@@ -70,11 +112,10 @@ def main():
                 f"{data['balance_due']:.2f}\t{data['minimum_payment']:.2f}")
         
         # Ask user if they want to update Excel
-        update_excel = input("\nUpdate Excel file with these results? (y/n): ").strip().lower()
-        if update_excel == 'y':
-            excel_path = input("Enter Excel file path: ").strip()
-            try:
-                record_number = int(input("Enter record number to update (1 = first, 2 = second, etc.): "))
+        excel_path = input("Enter Excel file path: ").strip()
+        try:
+            record_number = get_record_number()
+            if record_number :
 
                 while True:
                     try:
@@ -90,9 +131,9 @@ def main():
                         print(f"❌ Failed to update Excel: {str(e)}")
                         break
 
-            except ValueError:
-                print("❌ Invalid record number.")
-
+        except ValueError:
+            print("❌ Invalid record number.")
+        
     except Exception as e:
         print(f"Error: {str(e)}")
 
