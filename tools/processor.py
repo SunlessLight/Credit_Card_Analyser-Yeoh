@@ -56,7 +56,7 @@ class CreditCardProcessor:
         print(after_col_letter)
 
         # Insert a new column in the Excel sheet
-        self.insert_column_with_format_and_merge(ws, after_col_index + 1)
+        self.excel_manager.insert_column_with_format_and_merge(ws, after_col_index + 1)
         
         print("inserted new column")
 
@@ -100,7 +100,7 @@ class CreditCardProcessor:
         # Replace and save
         self.CARD_ORDERED_MAP = dict(new_card_map)
 
-        self.save_card_order_map()   
+        self.excel_manager.save_card_order_map(self.CARD_ORDERED_MAP)   
 
 
     def parse_statement(self, pdf_path: str, password: Optional[str] = None) -> Dict[str, Dict[str, float]]:
@@ -140,9 +140,10 @@ class CreditCardProcessor:
                         ws = wb.active
                         bank_cards = dict(self.excel_manager.CARD_ORDERED_MAP[self.bank_name])  # update after insert
                         card_col = bank_cards.get(card)
+                        ws[f"{card_col}{3}"] = card
                     else:
                         raise ValueError(f"No base card found for bank {self.bank_name} to insert {card}.")
-                    ws[f"{card_col}{3}"] = card
+                    
 
                 # Fill each value in the right row
                 ws[f"{card_col}{base_row + 0}"] = data["previous_balance"]
