@@ -1,4 +1,4 @@
-from tools import ExcelManager, TextExtractor, CreditCardProcessor
+from .tools import ExcelManager, TextExtractor, CreditCardProcessor
 import os
 from pathlib import Path
 
@@ -35,7 +35,7 @@ def main():
         print("Invalid bank selection.")
         return
 
-    processor = CreditCardProcessor(selected_bank)
+    processor = CreditCardProcessor(selected_bank, excel_manager)
     # Select PDF file from folder
     print(f"\n🔍 Scanning folder: {PDF_FOLDER}")
     pdf_files = [f for f in os.listdir(PDF_FOLDER) if f.lower().endswith(".pdf")]

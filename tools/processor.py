@@ -1,10 +1,10 @@
 from pathlib import Path
 import fitz
 from typing import Dict, List, Optional
-from credit_card_parser.banks import UOB, HLB, MYB, RHB, PBB, CIMB
+from ..banks import UOB, HLB, MYB, RHB, PBB, CIMB
 from openpyxl import load_workbook
-from excel_operations import ExcelManager
-from text_extractor import TextExtractor
+from .excel_operations import ExcelManager
+from .text_extractor import TextExtractor
 from openpyxl.utils import get_column_letter, column_index_from_string 
 
 
@@ -22,10 +22,10 @@ class CreditCardProcessor:
     
     
     
-    def __init__(self, bank: str, excel_manager: ExcelManager):
+    def __init__(self, bank: str, excel_manager : ExcelManager):
         self.bank = self.BANK_CLASSES[bank]()
         self.bank_name = bank
-        self.excel_manager = ExcelManager
+        self.excel_manager = excel_manager
         self.card_global_order = self._generate_ordered_list()
         self.card_column_map = {
             suffix: col for suffix, col, _ in self.card_global_order
@@ -35,7 +35,7 @@ class CreditCardProcessor:
     def _generate_ordered_list(self) -> List[tuple]:
         return [
             (suffix, col, bank)
-            for bank, cards in self.excel_manger.CARD_ORDERED_MAP.items()
+            for bank, cards in self.excel_manager.CARD_ORDERED_MAP.items()
             for suffix, col in cards
         ]
 
@@ -105,7 +105,7 @@ class CreditCardProcessor:
 
     def parse_statement(self, pdf_path: str, password: Optional[str] = None) -> Dict[str, Dict[str, float]]:
         """Always generates both raw text and blocks files"""
-        lines = TextExtractor(pdf_path, password)  # extract_text now saves raw text
+        lines = TextExtractor.extract_text(pdf_path, password)  # extract_text now saves raw text
         blocks = self.bank.create_blocks(lines)
         
         TextExtractor.save_blocks(pdf_path,blocks)
