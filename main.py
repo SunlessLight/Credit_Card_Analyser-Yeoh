@@ -1,5 +1,9 @@
-from processor import CreditCardProcessor
+from tools import ExcelManager, TextExtractor, CreditCardProcessor
 import os
+from pathlib import Path
+
+CARD_ORDERED_MAP_PATH = Path(__file__).parent / "card_order_map.json"
+excel_manager = ExcelManager(CARD_ORDERED_MAP_PATH)
 
 # Auto password mapping: Bank name -> password
 BANK_PASSWORDS = {
