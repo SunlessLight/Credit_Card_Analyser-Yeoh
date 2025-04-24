@@ -1,3 +1,5 @@
+import os
+
 def get_bank_choice(banks):
     while True:
         print("\nAvailable banks:")
@@ -16,20 +18,18 @@ def get_bank_choice(banks):
         except ValueError:
             print("❌ Invalid input. Please enter a number.")
 
-def get_pdf_choice(pdf_files):
-    while True:
-        print("\nAvailable PDF files:")
-        for i, filename in enumerate(pdf_files, 1):
-            print(f"{i}. {filename}")
-        
+def select_pdf_file(folder_path: str) -> str:
+        print(f"\n🔍 Scanning folder: {folder_path}")
+        pdf_files = [f for f in os.listdir(folder_path) if f.lower().endswith('.pdf')]
+        if not pdf_files:
+            print("❌ No PDF files found.")
+            return None
+        print("\n📄 Available PDF files:")
+        for i, file in enumerate(pdf_files):
+            print(f"  {i + 1}. {file}")
         try:
-            choice = input("Select PDF file (or 'q' to quit): ").strip()
-            if choice.lower() == 'q':
-                return None
-                
-            choice = int(choice) - 1
-            if 0 <= choice < len(pdf_files):
-                return pdf_files[choice]
-            print(f"❌ Please enter a number between 1 and {len(pdf_files)}")
-        except ValueError:
-            print("❌ Invalid input. Please enter a number.")
+            file_choice = int(input("Select file number: ")) - 1
+            return os.path.join(folder_path, pdf_files[file_choice])
+        except (ValueError, IndexError):
+            print("❌ Invalid file choice.")
+            return None
