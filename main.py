@@ -20,6 +20,7 @@ BANK_PASSWORDS = {
 # d:\OneDrive\Documents\Credit_card_programme\Credit_Card_Balances.xlsx
        
 def main():
+    print("📂 Credit Card Statement Parser")
     while True:
         PDF_FOLDER = input(r"Enter folder path: ").strip()
         if os.path.isdir(PDF_FOLDER):
