@@ -1,4 +1,12 @@
 import os
+def get_folder_path():
+    while True:
+        PDF_FOLDER = input(r"Enter folder path: ").strip()
+        if os.path.isdir(PDF_FOLDER):
+            return PDF_FOLDER
+            
+        print("❌ Invalid folder path. Please try again.")
+
 
 def get_bank_choice(banks):
     while True:
