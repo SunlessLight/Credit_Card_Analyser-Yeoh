@@ -1,11 +1,20 @@
 import tkinter as tk
+import sys
 from tkinter import filedialog, messagebox, ttk
 from pathlib import Path
 from credit_card_parser.processor_tools import ExcelManager, CreditCardProcessor
 from credit_card_parser.banks import get_password_from_bank
 from credit_card_parser.main_tools import select_pdf_file, parser_show_result
 
-CARD_ORDERED_MAP_PATH = Path(__file__).parent / "card_order_map.json"
+if getattr(sys, 'frozen', False):
+    # If running as bundled exe
+    base_path = Path(sys._MEIPASS)
+else:
+    # If running from source
+    base_path = Path(__file__).parent
+
+CARD_ORDERED_MAP_PATH = base_path / "card_order_map.json"
+
 
 class CreditCardGUI:
     def __init__(self, root):
