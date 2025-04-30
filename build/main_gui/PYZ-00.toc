@@ -621,18 +621,6 @@
    'D:\\OneDrive\\Projects\\Vs_Code Project\\python '
    'project\\credit_card_parser\\gui.py',
    'PYMODULE'),
-  ('credit_card_parser.main_tools',
-   'D:\\OneDrive\\Projects\\Vs_Code Project\\python '
-   'project\\credit_card_parser\\main_tools\\__init__.py',
-   'PYMODULE'),
-  ('credit_card_parser.main_tools.input_error_handling',
-   'D:\\OneDrive\\Projects\\Vs_Code Project\\python '
-   'project\\credit_card_parser\\main_tools\\input_error_handling.py',
-   'PYMODULE'),
-  ('credit_card_parser.main_tools.parser_show_result',
-   'D:\\OneDrive\\Projects\\Vs_Code Project\\python '
-   'project\\credit_card_parser\\main_tools\\parser_show_result.py',
-   'PYMODULE'),
   ('credit_card_parser.processor_tools',
    'D:\\OneDrive\\Projects\\Vs_Code Project\\python '
    'project\\credit_card_parser\\processor_tools\\__init__.py',

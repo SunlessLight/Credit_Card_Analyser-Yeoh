@@ -3,8 +3,8 @@ import sys
 from tkinter import filedialog, messagebox, ttk
 from pathlib import Path
 from credit_card_parser.processor_tools import ExcelManager, CreditCardProcessor
-from credit_card_parser.banks import get_password_from_bank
-from credit_card_parser.main_tools import select_pdf_file, parser_show_result
+import sys
+from pathlib import Path
 
 if getattr(sys, 'frozen', False):
     # If running as bundled exe
@@ -28,11 +28,11 @@ class CreditCardGUI:
         self._create_widgets()
 
     def _create_widgets(self):
-        # Folder selection
-        tk.Label(self.root, text="PDF Folder:").pack(pady=5)
-        self.folder_entry = tk.Entry(self.root, width=60)
-        self.folder_entry.pack()
-        tk.Button(self.root, text="Browse Folder", command=self.select_folder).pack()
+        # PDF selection
+        tk.Label(self.root, text="Select PDF file:").pack(pady=5)
+        self.pdf_entry = tk.Entry(self.root, width=60)  # Fixed variable name
+        self.pdf_entry.pack()
+        tk.Button(self.root, text="Browse PDF", command=self.select_pdf).pack()
 
         # Bank selection
         tk.Label(self.root, text="Select Bank:").pack(pady=5)
@@ -41,12 +41,6 @@ class CreditCardGUI:
         self.bank_dropdown['values'] = list(CreditCardProcessor.BANK_CLASSES.keys())
         self.bank_dropdown.pack()
         self.bank_dropdown.bind("<<ComboboxSelected>>", self.update_password_field)
-
-
-        # PDF file selection
-        tk.Label(self.root, text="Select PDF File:").pack(pady=5)
-        self.pdf_dropdown = ttk.Combobox(self.root)
-        self.pdf_dropdown.pack()
 
         # Password entry
         tk.Label(self.root, text="PDF Password:").pack(pady=5)
@@ -71,22 +65,11 @@ class CreditCardGUI:
         self.status_label = tk.Label(self.root, text="", fg="green")
         self.status_label.pack(pady=5)
 
-    def select_folder(self):
-        folder = filedialog.askdirectory()
-        if folder:
-            self.folder_entry.delete(0, tk.END)
-            self.folder_entry.insert(0, folder)
-
-            folder_path = Path(folder)
-            pdf_files = list(folder_path.glob("*.pdf"))
-
-            if not pdf_files:
-                messagebox.showinfo("No PDFs Found", "No PDF files found in the selected folder.")
-            else:
-                pdf_names = [pdf.name for pdf in pdf_files]
-                self.pdf_dropdown['values'] = pdf_names
-                self.pdf_dropdown.set(pdf_names[0])  # auto-select first PDF
-
+    def select_pdf(self):
+        path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
+        if path:
+            self.pdf_entry.delete(0, tk.END)
+            self.pdf_entry.insert(0, path)
 
     def select_excel(self):
         path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
@@ -103,14 +86,13 @@ class CreditCardGUI:
         return popup
 
     def run_parser(self):
-        folder = self.folder_entry.get()
-        selected_pdf_name = self.pdf_dropdown.get()
+        selected_pdf = self.pdf_entry.get()
         bank = self.bank_var.get()
         excel_path = self.excel_entry.get()
         record_number = self.record_entry.get()
         password = self.password_entry.get()
 
-        if not (folder and selected_pdf_name and bank and excel_path and record_number):
+        if not (selected_pdf and bank and excel_path and record_number):
             messagebox.showerror("Missing Info", "Please fill in all fields.")
             return
 
@@ -121,11 +103,10 @@ class CreditCardGUI:
             return
 
         self.processor = CreditCardProcessor(bank, ExcelManager(CARD_ORDERED_MAP_PATH))
-        pdf_path = str(Path(folder) / selected_pdf_name)
-        
+
         popup = self.show_processing_popup()
         try:
-            results = self.processor.parse_statement(pdf_path, password)
+            results = self.processor.parse_statement(selected_pdf, password)
             self.processor.write_to_excel(results, excel_path, record_number)
             popup.destroy()
             self.status_label.config(text="Parsing and Excel update complete.", fg="green")
@@ -136,21 +117,12 @@ class CreditCardGUI:
             messagebox.showerror("Error", str(e))
 
     def update_password_field(self, event=None):
-        bank = self.bank_var.get()
-        password = get_password_from_bank(bank)
+        # Always allow the user to input the password manually
+        self.password_entry.config(state="normal")
+        self.password_entry.delete(0, tk.END)
 
-        if password:
-            self.password_entry.config(state="normal")
-            self.password_entry.delete(0, tk.END)
-            self.password_entry.insert(0, password)
-            self.password_entry.config(state="readonly")  # prevent user edit if auto-filled
-        else:
-            self.password_entry.config(state="normal")
-            self.password_entry.delete(0, tk.END)
 
 def main():
     root = tk.Tk()
     app = CreditCardGUI(root)
     root.mainloop()
-
-

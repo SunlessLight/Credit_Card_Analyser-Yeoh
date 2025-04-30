@@ -1,11 +1,4 @@
 import os
-def get_folder_path():
-    while True:
-        PDF_FOLDER = input(r"Enter folder path: ").strip()
-        if os.path.isdir(PDF_FOLDER):
-            return PDF_FOLDER
-            
-        print("❌ Invalid folder path. Please try again.")
 
 
 def get_bank_choice(banks):
@@ -26,18 +19,17 @@ def get_bank_choice(banks):
         except ValueError:
             print("❌ Invalid input. Please enter a number.")
 
-def select_pdf_file(folder_path: str) -> str:
-        print(f"\n🔍 Scanning folder: {folder_path}")
-        pdf_files = [f for f in os.listdir(folder_path) if f.lower().endswith('.pdf')]
-        if not pdf_files:
-            print("❌ No PDF files found.")
-            return None
-        print("\n📄 Available PDF files:")
-        for i, file in enumerate(pdf_files):
-            print(f"  {i + 1}. {file}")
-        try:
-            file_choice = int(input("Select file number: ")) - 1
-            return os.path.join(folder_path, pdf_files[file_choice])
-        except (ValueError, IndexError):
-            print("❌ Invalid file choice.")
-            return None
+def select_pdf_file(folder_path: str = ".") -> str:
+    print("\n📄 Select a PDF file:")
+    pdf_files = [f for f in os.listdir(folder_path) if f.lower().endswith('.pdf')]
+    if not pdf_files:
+        print("❌ No PDF files found.")
+        return None
+    for i, file in enumerate(pdf_files):
+        print(f"  {i + 1}. {file}")
+    try:
+        file_choice = int(input("Select file number: ")) - 1
+        return os.path.join(folder_path, pdf_files[file_choice])
+    except (ValueError, IndexError):
+        print("❌ Invalid file choice.")
+        return None

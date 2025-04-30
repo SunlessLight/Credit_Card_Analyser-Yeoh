@@ -3,7 +3,7 @@ from .banks import get_password_from_bank
 from pathlib import Path 
 import sys
 import os
-from .main_tools import get_bank_choice,get_folder_path, select_pdf_file,parser_show_result
+from .main_tools import get_bank_choice, select_pdf_file,parser_show_result
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and PyInstaller """
@@ -19,7 +19,7 @@ CARD_ORDERED_MAP_PATH = Path(resource_path("card_order_map.json"))
        
 def main():
     print("📂 Credit Card Statement Parser")
-    folder_path = get_folder_path()
+    
         
     banks = list(CreditCardProcessor.BANK_CLASSES.keys())
     selected_bank = get_bank_choice(banks)
@@ -28,7 +28,7 @@ def main():
 
     processor = CreditCardProcessor(selected_bank, ExcelManager(CARD_ORDERED_MAP_PATH))
 
-    selected_pdf = select_pdf_file(folder_path)
+    selected_pdf = select_pdf_file(".")  # Directly select a PDF file
     if not selected_pdf:
         return
     

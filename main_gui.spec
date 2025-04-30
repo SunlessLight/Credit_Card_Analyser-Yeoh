@@ -5,7 +5,7 @@ a = Analysis(
     ['main_gui.py'],
     pathex=[],
     binaries=[],
-    datas=[('card_order_map.json', '.')],
+    datas=[('d:\\OneDrive\\Projects\\Vs_Code Project\\python project\\credit_card_parser\\card_order_map.json', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
