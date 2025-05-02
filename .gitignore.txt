@@ -1,4 +1,26 @@
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.pyc
-.env
+*.py[cod]
+*.pyd
+
+# PyInstaller output
+build/
+dist/
+*.spec
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# VS Code settings
+.vscode/
+
+# System files
 .DS_Store
+Thumbs.db
+
+# Logs / cache
+*.log
+*.tmp
+.cache/

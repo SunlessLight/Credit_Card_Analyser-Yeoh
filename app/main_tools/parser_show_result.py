@@ -1,3 +1,7 @@
+from statement_analyser_personal.logger import get_logger
+
+logger = get_logger(__name__)
+
 def get_record_number():
     while True:
         try:

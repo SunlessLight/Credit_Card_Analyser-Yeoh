@@ -1,25 +1,18 @@
 import tkinter as tk
-import sys
 from tkinter import filedialog, messagebox, ttk
-from pathlib import Path
-from credit_card_parser.processor_tools import ExcelManager, CreditCardProcessor
-import sys
-from pathlib import Path
+from .processor_tools import ExcelManager, CreditCardProcessor
+from .main_tools import get_resource_path
+from statement_analyser_personal.logger import get_logger
 
-if getattr(sys, 'frozen', False):
-    # If running as bundled exe
-    base_path = Path(sys._MEIPASS)
-else:
-    # If running from source
-    base_path = Path(__file__).parent
+logger = get_logger(__name__)
 
-CARD_ORDERED_MAP_PATH = base_path / "card_order_map.json"
+CARD_ORDERED_MAP_PATH = get_resource_path("data/card_order_map.json")
 
 
 class CreditCardGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Credit Card Parser")
+        self.root.title("Statement Analyser")
         self.root.geometry("600x400")
 
         self.processor = None

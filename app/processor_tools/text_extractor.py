@@ -1,6 +1,9 @@
 from pathlib import Path
 import fitz
 from typing import List, Optional
+from statement_analyser_personal.logger import get_logger
+
+logger = get_logger(__name__)
 
 class TextExtractor:
     @staticmethod

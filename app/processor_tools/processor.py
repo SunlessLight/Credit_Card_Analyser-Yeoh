@@ -1,4 +1,3 @@
-from pathlib import Path
 import os
 from typing import Dict, List, Optional
 from ..banks import UOB, HLB, MYB, RHB, PBB, CIMB
@@ -6,7 +5,9 @@ from openpyxl import load_workbook
 from .excel_operations import ExcelManager
 from .text_extractor import TextExtractor
 from openpyxl.utils import get_column_letter, column_index_from_string 
+from statement_analyser_personal.logger import get_logger
 
+logger = get_logger(__name__)
 
 
 class CreditCardProcessor:

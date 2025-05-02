@@ -1,9 +1,11 @@
 from pathlib import Path
-from openpyxl import load_workbook
-from openpyxl.utils import get_column_letter, column_index_from_string
+from openpyxl.utils import get_column_letter
 from copy import copy
 from openpyxl.worksheet.worksheet import Worksheet
 import json
+from statement_analyser_personal.logger import get_logger
+
+logger = get_logger(__name__)
 
 class ExcelManager:
     def __init__(self, card_ordered_map_path: Path):

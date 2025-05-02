@@ -1,19 +1,12 @@
 from .processor_tools import ExcelManager, CreditCardProcessor
 from .banks import get_password_from_bank
-from pathlib import Path 
-import sys
-import os
-from .main_tools import get_bank_choice, select_pdf_file,parser_show_result
+from .main_tools import get_bank_choice, select_pdf_file,parser_show_result, get_resource_path
+from statement_analyser_personal.logger import get_logger
 
-def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and PyInstaller """
-    if getattr(sys, 'frozen', False):  # running from .exe
-        base_path = sys._MEIPASS
-    else:
-        base_path = os.path.dirname(__file__)
-    return os.path.join(base_path, relative_path)
+logger = get_logger(__name__)
 
-CARD_ORDERED_MAP_PATH = Path(resource_path("card_order_map.json"))
+
+CARD_ORDERED_MAP_PATH = get_resource_path("data/card_order_map.json")
 
 # d:\OneDrive\Documents\Credit_card_programme\Credit_Card_Balances.xlsx
        

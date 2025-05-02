@@ -1,5 +1,7 @@
 import os
+from statement_analyser_personal.logger import get_logger
 
+logger = get_logger(__name__)
 
 def get_bank_choice(banks):
     while True:
