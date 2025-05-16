@@ -15,8 +15,9 @@ class BankConfig:
     previous_balance_keywords: List[str]
     credit_payment_keywords: List[str]
     debit_fees_keywords: List[str]
-    subtotal_keywords: List[str]
-    minimum_payment_keywords: List[str]
+    balance_due_keywords: List[str]
+    retail_purchase_keywords: List[str]
+    minimum_payment_keywords : List[str]
     foreign_currencies: List[str]
     amount_pattern: str = r"(\d{1,3}(?:,\d{3})*\.\d{2})"
     
@@ -39,7 +40,7 @@ class BaseBank(ABC):
 
     
 
-    @classmethod
+    
     def create_blocks(self, lines: List[str]) -> Dict[str, List[str]]:
         logger.debug("Starting to create blocks from statement lines.")
         blocks = {}
@@ -100,8 +101,8 @@ class BaseBank(ABC):
         return {
             "previous_balance": 0.00,
             "credit_payment": 0.00,
-            "retail_purchases": 0.00,
             "debit_fees": 0.00,
+            "retail_purchase": 0.00,
             "balance_due": 0.00,
             "minimum_payment": 0.00
         }
@@ -117,15 +118,17 @@ class BaseBank(ABC):
             
 
     def extract_credit_payment(self, line:str, data:Dict[str,float]) -> None:
-            amount = self.extract_amount(line.replace("CR",""))
+            amount = self.extract_amount(line.replace("CR", "") if "CR" in line else line)
+            
             if amount is not None:
-                data["credit_payment"] += -amount
+                data["credit_payment"] -= amount
                 logger.debug(f"Extracted credit payment: {data["credit_payment"]}")
             else:
                 data["credit_payment"] = 0.00
                 logger.debug("No amount found for credit payment.")
 
-    def extract_retail_interest(self, next_line:str, data:Dict[str,float]) -> None:
+
+    def extract_debit_fees(self, next_line:str, data:Dict[str,float]) -> None:
         
             amount = self.extract_amount(next_line)
             if amount is not None:
@@ -134,8 +137,9 @@ class BaseBank(ABC):
             else:
                 data["debit_fees"] = 0.00
                 logger.debug("No amount found for debit fees.")
-
-    def extract_subtotal(self, next_line:str, data:Dict[str,float]) -> None:
+            
+    
+    def extract_balance_due(self, next_line:str, data:Dict[str,float]) -> None:
         amount = self.extract_amount(next_line.replace("CR", ""))
         if amount is not None:
                 data["balance_due"] = -amount if "CR" in next_line else amount
@@ -153,14 +157,14 @@ class BaseBank(ABC):
             data["minimum_payment"] = 0.00
             logger.debug("No amount found for minimum_payment.")
 
-    def extract_retail_purchases(self, line:str, data:Dict[str,float]) -> None:
+    def extract_retail_purchase(self, line:str, data:Dict[str,float]) -> None:
         amount = self.extract_amount(line)
         if amount and amount > 0:
-            data["retail_purchases"] += amount
-            logger.debug(f"Extracted retail purchases: {data['retail_purchases']}")
+            data["retail_purchase"] += amount
+            logger.debug(f"Extracted retail purchase: {data['retail_purchase']}")
         else:
-            data["retail_purchases"] = 0.00
-            logger.debug("No amount found for retail purchases.")
+            data["retail_purchase"] =+ 0.00
+            logger.debug("No amount found for retail purchase.")
             
     def extract_amount(self, text: str) -> Optional[float]:
         logger.debug(f"Extracting amount from text: {text}")

@@ -34,10 +34,13 @@ class TextExtractor:
 
     @staticmethod
     def save_blocks(pdf_path: str, blocks: dict):
-        """Save parsed blocks to file"""
-        blocks_path = str(Path(pdf_path).with_suffix('.blocks.txt'))
-        with open(blocks_path, "w", encoding="utf-8") as f:
-            for card, block_lines in blocks.items():
-                f.write(f"===== Card: {card} =====\n")
-                f.write("\n".join(block_lines) + "\n\n")
-        print(f"Saved blocks to: {blocks_path}")
+        try:
+            """Save parsed blocks to file"""
+            blocks_path = str(Path(pdf_path).with_suffix('.blocks.txt'))
+            with open(blocks_path, "w", encoding="utf-8") as f:
+                for card, block_lines in blocks.items():
+                    f.write(f"===== Card: {card} =====\n")
+                    f.write("\n".join(block_lines) + "\n\n")
+            print(f"Saved blocks to: {blocks_path}")
+        except Exception as e:
+            logger.error(f"Encountered error: {e}")

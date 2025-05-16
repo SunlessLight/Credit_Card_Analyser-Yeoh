@@ -24,7 +24,7 @@ def parser_show_result(processor, selected_pdf, password):
                 print("Card\tPrevious Balance\tCredit Payment\tRetail Purchases\tDebit Fees\tBalance Due\tMinimum Payment")
                 for card, data in results.items():
                     print(f"{card}\t{data['previous_balance']:.2f}\t{data['credit_payment']:.2f}\t"
-                        f"{data['retail_purchases']:.2f}\t{data['debit_fees']:.2f}\t"
+                        f"{data['debit_fees']:.2f}\t{data['retail_purchase']:.2f}\t"
                         f"{data['balance_due']:.2f}\t{data['minimum_payment']:.2f}")
                 
                 # Ask user if they want to update Excel

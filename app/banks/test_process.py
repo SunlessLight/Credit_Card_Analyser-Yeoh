@@ -1,24 +1,14 @@
 import unittest
 from unittest.mock import patch
 from statement_analyser_personal.app.banks.uob import UOB
-from statement_analyser_personal.app.banks.base_bank import BankConfig
+from statement_analyser_personal.app.banks.test_block import create_blocks, extract_lines
+from statement_analyser_personal.app.processor_tools.text_extractor import TextExtractor
 
 class TestBank(unittest.TestCase):
 
     def setUp(self):
         self.bank = UOB()
-        self.bank.config = BankConfig(
-            name="UOB",
-            card_pattern=r"\*\*(\d{4}-\d{4}-\d{4}-(\d{4}))\*\*",
-            start_keywords=[r"\*\*\d{4}-\d{4}-\d{4}-\d{4}\*\*"],
-            end_keywords=["END OF STATEMENT"],
-            previous_balance_keywords=["PREVIOUS BAL"],
-            credit_payment_keywords=["CR"],
-            debit_fees_keywords=["RETAIL INTEREST"],
-            subtotal_keywords=["SUB-TOTAL"],
-            minimum_payment_keywords=["MINIMUM PAYMENT DUE"],
-            foreign_currencies=["AUD", "USD", "IDR", "SGD", "THB", "PHP"],
-        )
+        
 
     def test_process_block_with_valid_data(self):
         block = [
@@ -107,8 +97,21 @@ class TestBank(unittest.TestCase):
 
         result = self.bank.process_block(block)
         self.assertEqual(result, expected_data)
+
     
-  
+    def test_real_data(self):
+        lines = TextExtractor.extract_text(r"c:\Users\User\OneDrive\Documents\Credit_card_programme\credit_card_statements\second record\eStatement_76605.76854609993.pdf")
+        blocks = self.bank.create_blocks(lines)
+        print(blocks)
+        result = {}
+        for key, block in blocks.items():
+            result[key] = self.bank.process_block(block)
+            
+        for card, data in result.items():
+                print(f"{card}\t{data['previous_balance']:.2f}\t{data['credit_payment']:.2f}\t"
+                    f"{data['debit_fees']:.2f}\t{data['retail_purchase']:.2f}\t"
+                    f"{data['balance_due']:.2f}\t{data['minimum_payment']:.2f}")
+    
 
 if __name__ == "__main__":
     unittest.main()

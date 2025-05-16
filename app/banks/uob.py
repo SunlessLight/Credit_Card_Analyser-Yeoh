@@ -14,12 +14,13 @@ class UOB(BaseBank):
         return BankConfig(
             name="UOB",
             card_pattern=r"\*\*(\d{4}-\d{4}-\d{4}-(\d{4}))\*\*",
-            start_keywords=[r"\*\*\d{4}-\d{4}-\d{4}-\d{4}\*\*"],
+            start_keywords=["Transaction Amount"],
             end_keywords=["END OF STATEMENT"],
             previous_balance_keywords=["PREVIOUS BAL"],
             credit_payment_keywords=["CR"],
             debit_fees_keywords=["RETAIL INTEREST"],
-            subtotal_keywords=["SUB-TOTAL"],
+            balance_due_keywords=["SUB-TOTAL"],
+            retail_purchase_keywords= [],
             minimum_payment_keywords=["MINIMUM PAYMENT DUE"],
             foreign_currencies=["AUD", "USD", "IDR", "SGD", "THB", "PHP"],
             
@@ -47,12 +48,12 @@ class UOB(BaseBank):
 
                 # Retail Interest/Fees
                 elif any(kw in line for kw in self.config.debit_fees_keywords):
-                    self.extract_retail_interest(next_line, data)
+                    self.extract_debit_fees(next_line, data)
                     i += 1
 
                 # Subtotal/Balance Due
-                elif any(kw in line for kw in self.config.subtotal_keywords):
-                    self.extract_subtotal(next_line, data)
+                elif any(kw in line for kw in self.config.balance_due_keywords):
+                    self.extract_balance_due(next_line, data)
                     i += 1
 
                 # Minimum Payment
@@ -62,7 +63,7 @@ class UOB(BaseBank):
 
                 # Retail Purchases
                 elif self.is_amount_line(line) and not any(curr in block[i-1] for curr in self.config.foreign_currencies):
-                    self.extract_retail_purchases(line, data)
+                    self.extract_retail_purchase(line, data)
 
                 
             except Exception as e:

@@ -12,136 +12,105 @@ class HLB(BaseBank):
         logger.debug("Fetching HLB bank configuration.")
         return BankConfig(
             name="HLB",
-            card_pattern=r"(\d{4} \d{4} \d{4} \d{4})",  # Full 16-digit card number
-            start_keywords=[r"WISE VISA GOLD.*\d{4} \d{4} \d{4} \d{4}"],  # Combined pattern
-            end_keywords=["TOTAL BALANCE"],
+            card_pattern=r"(\d{4} \d{4} \d{4}(\d{4}))",  # Full 16-digit card number
+            start_keywords=["YOUR TRANSACTION DETAILS / TRANSAKSI TERPERINCI ANDA"],  # Combined pattern
+            end_keywords=["TOTAL BALANCE","TOTAL Minimum Payment"],
             previous_balance_keywords=["PREVIOUS BALANCE FROM LAST STATEMENT"],
             credit_payment_keywords=["CR"],
-            retail_interest_keywords=["interest charged"],
-            subtotal_keywords=["SUB TOTAL"],
+            debit_fees_keywords=["interest charged","DCC FEE 1.00%" ],
+            balance_due_keywords=["SUB TOTAL"],
+            retail_purchase_keywords=[],
             minimum_payment_keywords=["TOTAL Minimum Payment"],
             foreign_currencies=["AUD", "USD", "IDR", "SGD", "THB", "PHP", "GBP"],
-            credit_indicator="CR"
+            
         )
 
-    def create_blocks(self, lines: List[str]) -> Dict[str, List[str]]:
-        logger.debug("Starting to create blocks from statement lines.")
-        blocks = {}
-        current_card = None
-        current_block = []
-        capture_active = False
-        
-        for i, line in enumerate(lines):
-            clean_line = ' '.join(line.strip().split())
-            logger.debug(f"Processing line: {clean_line}")
-            
-            try:
-                # Detect EXACT start: "WISE VISA GOLD" followed by card number in SAME line
-                if "WISE VISA GOLD" in clean_line and re.search(self.config.card_pattern, clean_line):
-                    card_match = re.search(self.config.card_pattern, clean_line)
-                    current_card = card_match.group(1).replace(" ", "")[-4:]  # Last 4 digits
-                    logger.debug(f"Detected card number: {current_card}")
-                    current_block = [clean_line]
-                    capture_active = True
-                    continue
-                
-                # Only capture between start and SUB TOTAL
-                if current_card and capture_active:
-                    current_block.append(clean_line)
-                    if any(kw in clean_line for kw in self.config.end_keywords):
-                        logger.debug(f"Ending block for card: {current_card}")
-                        blocks[current_card] = current_block
-                        current_card = None
-                        current_block = []
-                        capture_active = False
-            except Exception as e:
-                logger.error(f"Error processing line: {clean_line}. Error: {e}")
-        
-        if not blocks:
-            logger.warning("No blocks were created. Check if the input lines contain valid data.")
-        logger.debug(f"Finished creating blocks: {blocks.keys()}")
-        return blocks
 
-    def process_block(self, block: List[str], full_text: List[str]) -> Dict[str, float]:
+    def process_block(self, block: List[str]) -> Dict[str, float]:
         logger.debug("Processing a block of financial data.")
-        data = {
-            "previous_balance": 0.0,
-            "credit_payment": 0.0,  # Will store as negative values
-            "retail_purchases": 0.0,
-            "debit_fees": 0.0,
-            "balance_due": 0.0,
-            "minimum_payment": 0.0
-        }
-
-        prev_line = ""
+        data = self.base_data()
         i = 0
         while i < len(block):
             line = block[i].strip()
-            clean_line = ' '.join(line.split())
-            logger.debug(f"Processing line: {clean_line}")
+            next_line = block[i+1].strip() if i+1 < len(block) else ""
+            logger.debug(f"Processing line: {line}")
             
             try:
                 # Previous Balance
-                if "PREVIOUS BALANCE FROM LAST STATEMENT" in clean_line and i+1 < len(block):
-                    amount = self.extract_amount(block[i+1])
-                    if amount:
-                        data["previous_balance"] = amount
-                        logger.debug(f"Extracted previous balance: {data['previous_balance']}")
+                if any(kw in line for kw in self.config.previous_balance_keywords):    
+                    self.extract_previous_balance(next_line, data)
                     i += 1
                 
                 # Credit Payments
-                elif "CR" in clean_line:
-                    amount = self.extract_amount(clean_line.replace("CR", ""))
-                    if amount:
-                        data["credit_payment"] -= abs(amount)
-                        logger.debug(f"Extracted credit payment: {data['credit_payment']}")
+                elif any(kw in line for kw in self.config.credit_payment_keywords):
+
+                    self.extract_credit_payment(line,data)
                 
+                # Retail Interest/Fees
+                elif any(kw in line for kw in self.config.debit_fees_keywords):
+                    self.extract_debit_fees(next_line, data)
+                    i += 1
+
                 # Retail Purchases
-                elif (self.is_amount_line(clean_line) and 
-                      not any(curr in prev_line for curr in self.config.foreign_currencies) and
-                      not self.is_financial_keyword_line(prev_line)):
-                    amount = self.extract_amount(clean_line)
-                    if amount and amount > 0:
-                        data["retail_purchases"] += amount
-                        logger.debug(f"Extracted retail purchases: {data['retail_purchases']}")
+                elif self.is_amount_line(line) and not any(curr in block[i-1] for curr in self.config.foreign_currencies):
+                    self.extract_retail_purchase(line, data)
                 
-                # Balance Due
-                elif "SUB TOTAL" in clean_line:
-                    amount = self.extract_amount(block[i+1])
-                    if amount:
-                        data["balance_due"] = amount
-                        logger.debug(f"Extracted balance due: {data['balance_due']}")
+                # Subtotal/Balance Due
+                elif any(kw in line for kw in self.config.balance_due_keywords):
+                    self.extract_balance_due(next_line, data)
+                    i += 1
+
             except Exception as e:
-                logger.error(f"Error processing line: {clean_line}. Error: {e}")
+                logger.error(f"Error processing line: {line}. Error: {e}")
             
-            prev_line = clean_line
             i += 1
 
         logger.debug(f"Processed block data: {data}")
         return data
 
-    def is_amount_line(self, line: str) -> bool:
-        logger.debug(f"Checking if line is an amount: {line}")
-        try:
-            line = line.strip()
-            is_amount = (re.fullmatch(r'[+-]?\d{1,3}(?:,\d{3})*\.\d{2}', line) is not None 
-                         and not any(c.isalpha() for c in line))
-            logger.debug(f"Is amount line: {is_amount}")
-            return is_amount
-        except Exception as e:
-            logger.error(f"Error checking if line is an amount: {line}. Error: {e}")
-            return False
+    def extract_minimum_payments_from_text(self, lines: List[str]) -> Dict[str, float]:
+        logger.debug("Extracting minimum payments from text.")
+        card_minimums = {}
+        for i, line in enumerate(lines):
+            try:
+                match = re.search(self.config.card_pattern, line)
+                if match and i + 5 < len(lines):
+                    
+                    last4 = match.group(2)
+                    amount = self.extract_amount(lines[i + 4])
+                    if amount is not None:
+                        card_minimums[last4] = amount
+                        logger.debug(f"Extracted minimum payment for card {last4}: {amount}")
+                if any(end_kw in line for end_kw in self.config.end_keywords):
+                    break
+            except Exception as e:
+                logger.error(f"Error extracting minimum payment from line: {line}. Error: {e}")
 
-    def is_financial_keyword_line(self, line: str) -> bool:
-        logger.debug(f"Checking if line contains financial keywords: {line}")
+        if not card_minimums:
+            logger.warning("No minimum payments were extracted. Check if the input lines contain valid data.")
+        else:
+            logger.debug(f"Extracted minimum payments: {card_minimums}")
+            return card_minimums
+
+    def extract(self, lines: List[str]) -> Dict[str, Dict[str, float]]:
+        logger.debug("Starting extraction process.")
         try:
-            keywords = (self.config.previous_balance_keywords + 
-                        self.config.credit_payment_keywords +
-                        self.config.subtotal_keywords +
-                        self.config.minimum_payment_keywords)
-            contains_keywords = any(kw in line for kw in keywords)
-            logger.debug(f"Contains financial keywords: {contains_keywords}")
-            return contains_keywords
+            blocks = self.create_blocks(lines)
+            results = {}
+
+            # Extract card -> minimum payment mapping from full text
+            min_payments = self.extract_minimum_payments_from_text(lines)
+            logger.debug(f"Minimum payments extracted: {min_payments}")
+
+            # Process each card block
+            for key, block in blocks.items():
+                logger.debug(f"Processing block for card: {key}")
+                results[key] = self.process_block(block)
+                if key in min_payments:
+                    results[key]["minimum_payment"] = min_payments[key]
+
+            logger.debug(f"Extraction results: {results}")
+            return results
         except Exception as e:
-            logger.error(f"Error checking financial keywords in line: {line}. Error: {e}")
-            return False
+            logger.error(f"Error during extraction process. Error: {e}")
+            return {}
