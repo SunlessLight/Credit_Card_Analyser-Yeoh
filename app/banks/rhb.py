@@ -1,4 +1,4 @@
-from .base_bank import BaseBank, BankConfig
+from statement_analyser_personal.app.banks.base_bank import BaseBank, BankConfig
 import re
 from typing import List, Dict, Optional
 from statement_analyser_personal.logger import get_logger
@@ -9,7 +9,7 @@ class RHB(BaseBank):
     
     @classmethod
     def get_config(cls) -> BankConfig:
-        logger.debug("Fetching CIMB bank configuration.")
+        logger.debug("Fetching RHB bank configuration.")
         return BankConfig(
             name="RHB",
             card_pattern=r"(\d{4}-\d{4}-\d{4}-(\d{4}))",
@@ -26,7 +26,6 @@ class RHB(BaseBank):
 
     def create_blocks(self, lines: List[str]) -> Dict[str, List[str]]:
         logger.debug("Starting to create blocks from statement lines.")
-        """RHB-specific block creation logic"""
         blocks = {}
         current_card = None
         current_block = []
@@ -101,7 +100,7 @@ class RHB(BaseBank):
                 # Credit Payments (marked with "CR")
                 elif self.config.credit_payment_keywords in line:
                     amount = self.extract_amount(line.replace("CR", ""))
-                    if amount:
+                    if amount is not None:
                         data["credit_payment"] += -amount
                         logger.debug(f"Extracted credit payment: {data['credit_payment']}")
 
@@ -162,16 +161,21 @@ class RHB(BaseBank):
         return card_minimums
 
     def extract(self, lines: List[str]) -> Dict[str, Dict[str, float]]:
-        blocks = self.create_blocks(lines)
-        results = {}
+        logger.debug("Starting extraction process.")
+        try:
+            blocks = self.create_blocks(lines)
+            results = {}
 
-        # Extract card -> minimum payment mapping from full text
-        min_payments = self.extract_minimum_payments_from_text(lines)
-
-        # Process each card block
-        for key, block in blocks.items():
-            results[key] = self.process_block(block, lines)
-            if key in min_payments:
-                results[key]["minimum_payment"] = min_payments[key]
-
-        return results
+            # Extract card -> minimum payment mapping from full text
+            min_payments = self.extract_minimum_payments_from_text(lines)
+            logger.debug(f"Minimum payments extracted: {min_payments}")
+            # Process each card block
+            for key, block in blocks.items():
+                results[key] = self.process_block(block)
+                if key in min_payments:
+                    results[key]["minimum_payment"] = min_payments[key]
+            logger.debug(f"Extraction results: {results}")
+            return results
+        except Exception as e:
+            logger.error(f"Error during extraction: {e}")
+            return{}

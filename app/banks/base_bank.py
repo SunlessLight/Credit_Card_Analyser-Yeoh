@@ -14,12 +14,12 @@ class BankConfig:
     end_keywords: List[str]
     previous_balance_keywords: List[str]
     credit_payment_keywords: List[str]
-    retail_interest_keywords: List[str]
+    debit_fees_keywords: List[str]
     subtotal_keywords: List[str]
     minimum_payment_keywords: List[str]
     foreign_currencies: List[str]
     amount_pattern: str = r"(\d{1,3}(?:,\d{3})*\.\d{2})"
-    credit_indicator: str = "CR"
+    
 
 class BaseBank(ABC):
     def __init__(self):
@@ -37,16 +37,131 @@ class BaseBank(ABC):
         """Return bank-specific configuration"""
         pass
 
-    @abstractmethod
+    
+
+    @classmethod
     def create_blocks(self, lines: List[str]) -> Dict[str, List[str]]:
-        """Bank-specific block creation logic"""
-        pass
+        logger.debug("Starting to create blocks from statement lines.")
+        blocks = {}
+        current_card = None
+        current_block = []
+        in_block = False
+        found_start = False
+
+        for line in lines:
+            clean_line = ' '.join(line.split())
+            logger.debug(f"Processing line: {clean_line}")
+            
+            try:
+                if not found_start:
+                    if any(start_kw in clean_line for start_kw in self.config.start_keywords):
+                        found_start = True  # Now we can start parsing
+                        logger.debug("Found start keyword. Beginning block parsing.")
+                    continue  # Skip until start keyword is found
+
+                # Detect card number
+                card_match = re.search(self.config.card_pattern, clean_line)
+                if card_match:
+                    if current_card:
+                        logger.debug(f"Ending block for card: {current_card}")
+                        blocks[current_card] = current_block
+                    current_card = card_match.group(2)
+                    logger.debug(f"Detected card number: {current_card}")
+                    current_block = [line]
+                    in_block = True
+                    continue
+                
+                # Detect end of block
+                if in_block and any(end_kw in clean_line for end_kw in self.config.end_keywords):
+                    logger.debug(f"Ending block for card: {current_card}")
+                    blocks[current_card] = current_block + [line]
+                    current_card = None
+                    current_block = []
+                    in_block = False
+                    continue
+                
+                if in_block:
+                    current_block.append(line)
+            except Exception as e:
+                logger.error(f"Error processing line: {clean_line}. Error: {e}")
+
+        if not blocks:
+            logger.warning("No blocks were created. Check if the input lines contain valid data.")
+        logger.debug(f"Finished creating blocks: {blocks.keys()}")
+        return blocks
 
     @abstractmethod
     def process_block(self, block: List[str], full_text: List[str]) -> Dict[str, float]:
         """Bank-specific data extraction from a block"""
         pass
+    
+    @classmethod
+    def base_data(self):
+        return {
+            "previous_balance": 0.00,
+            "credit_payment": 0.00,
+            "retail_purchases": 0.00,
+            "debit_fees": 0.00,
+            "balance_due": 0.00,
+            "minimum_payment": 0.00
+        }
+    
+    def extract_previous_balance(self, next_line: str, data: Dict[str, float]) -> None:
+            amount = self.extract_amount(next_line.replace("CR", ""))
+            if amount is not None:
+                data["previous_balance"] = -amount if "CR" in next_line else amount
+                logger.debug(f"Extracted previous balance: {data['previous_balance']}")
+            else:
+                data["previous_balance"] = 0.00
+                logger.debug("No amount found for previous balance.")
+            
 
+    def extract_credit_payment(self, line:str, data:Dict[str,float]) -> None:
+            amount = self.extract_amount(line.replace("CR",""))
+            if amount is not None:
+                data["credit_payment"] += -amount
+                logger.debug(f"Extracted credit payment: {data["credit_payment"]}")
+            else:
+                data["credit_payment"] = 0.00
+                logger.debug("No amount found for credit payment.")
+
+    def extract_retail_interest(self, next_line:str, data:Dict[str,float]) -> None:
+        
+            amount = self.extract_amount(next_line)
+            if amount is not None:
+                data["debit_fees"] += amount
+                logger.debug(f"Extracted debit fees: {data["debit_fees"]}")
+            else:
+                data["debit_fees"] = 0.00
+                logger.debug("No amount found for debit fees.")
+
+    def extract_subtotal(self, next_line:str, data:Dict[str,float]) -> None:
+        amount = self.extract_amount(next_line.replace("CR", ""))
+        if amount is not None:
+                data["balance_due"] = -amount if "CR" in next_line else amount
+                logger.debug(f"Extracted balance due: {data['balance_due']}")
+        else:
+            data["balance_due"] = 0.00
+            logger.debug("No amount found for subtotal.")
+
+    def extract_minimum_payment(self, next_line:str, data:Dict[str,float]) -> None:
+        amount = self.extract_amount(next_line.replace("CR", ""))
+        if amount is not None:
+                data["minimum_payment"] = -amount if "CR" in next_line else amount
+                logger.debug(f"Extracted balance due: {data['minimum_payment']}")
+        else:
+            data["minimum_payment"] = 0.00
+            logger.debug("No amount found for minimum_payment.")
+
+    def extract_retail_purchases(self, line:str, data:Dict[str,float]) -> None:
+        amount = self.extract_amount(line)
+        if amount and amount > 0:
+            data["retail_purchases"] += amount
+            logger.debug(f"Extracted retail purchases: {data['retail_purchases']}")
+        else:
+            data["retail_purchases"] = 0.00
+            logger.debug("No amount found for retail purchases.")
+            
     def extract_amount(self, text: str) -> Optional[float]:
         logger.debug(f"Extracting amount from text: {text}")
         try:

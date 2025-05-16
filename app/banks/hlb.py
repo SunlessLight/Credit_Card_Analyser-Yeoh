@@ -1,4 +1,4 @@
-from .base_bank import BaseBank, BankConfig
+from statement_analyser_personal.app.banks.base_bank import BaseBank, BankConfig
 import re
 from typing import List, Dict
 from statement_analyser_personal.logger import get_logger

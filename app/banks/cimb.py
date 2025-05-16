@@ -1,6 +1,6 @@
-from .base_bank import BaseBank, BankConfig
+from statement_analyser_personal.app.banks.base_bank import BaseBank, BankConfig
 import re
-from typing import List, Dict, Optional
+from typing import List, Dict
 from statement_analyser_personal.logger import get_logger
 
 logger = get_logger(__name__)
@@ -175,7 +175,7 @@ class CIMB(BaseBank):
             # Process each card block
             for key, block in blocks.items():
                 logger.debug(f"Processing block for card: {key}")
-                results[key] = self.process_block(block, lines)
+                results[key] = self.process_block(block)
                 if key in min_payments:
                     results[key]["minimum_payment"] = min_payments[key]
 
