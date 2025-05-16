@@ -15,16 +15,43 @@ class MYB(BaseBank):
             name="MYB",
             card_pattern=r"(\d{4} \d{4} \d{4} (\d{4}))",
             start_keywords=["Huraian Transaksi"],
-            end_keywords=["STATEMENT OF CREDIT CARD ACCOUNT","WARNING ON PAYING ONLY MINIMUM MONTHLY REPAYMENT /"],
+            end_keywords=["Maybank Card TreatsPoints earned for the month","WARNING ON PAYING ONLY MINIMUM MONTHLY REPAYMENT /"],
             previous_balance_keywords=["YOUR PREVIOUS STATEMENT BALANCE"],
             credit_payment_keywords=["(JUMLAH KREDIT)"],
             debit_fees_keywords=[],
             balance_due_keywords=["SUB TOTAL/JUMLAH"],
             retail_purchase_keywords=["(JUMLAH DEBIT)"],
-            minimum_payment_keywords=[]
+            minimum_payment_keywords=[],
+            foreign_currencies=[],
+            statement_date_keyword=["Tarikh Akhir Pembayaran"],
+            payment_date_keyword=[],
             
         )
 
+    def process_date(self, lines: List[str]) -> Dict[str,str]:
+        logger.debug("Processing statement and payment dates.")
+        date = self.date_dict()
+        subset = lines[0:50]
+        i = 0
+        while i < len(subset):
+            line = subset[i].strip()
+            next_line = subset[i+1].strip()
+            logger.debug(f"processing line: {line}")
+            try:
+                if any(kw in line for kw in self.config.statement_date_keyword):
+                    date["statement_date"] = self.extract_date(next_line)
+                    date["payment_date"] = self.extract_date(subset[i+2])
+                    logger.debug(f"Extracted statement date : {date["statement_date"]}")
+                    i += 1
+                
+                elif date["statement_date"] and date["payment_date"]:
+                    logger.debug("Both statement and payment dates have been extracted, stopping further processing.")
+                    break
+            except Exception as e:
+                logger.error(f"Error processing line: {line}. Error: {e}")
+            i += 1  
+        logger.debug(f"Extracted dates: {date}")
+        return date
 
     def process_block(self, block: List[str]) -> Dict[str, float]:
         logger.debug("Processing a block of financial data.")
@@ -70,6 +97,8 @@ class MYB(BaseBank):
         if data["debit_fees"] is not None:
             data["retail_purchase"] -= data["debit_fees"]
         logger.debug(f"Processed block data: {data}")
+        for key in data:
+            data[key] = round(data[key],2)
         return data
 
     def extract_minimum_payments_from_text(self, lines: List[str]) -> Dict[str, float]:
@@ -87,8 +116,8 @@ class MYB(BaseBank):
                         card_minimums[last4] = amount
                         logger.debug(f"Extracted minimum payment for card {last4}: {amount}")
 
-                    if any(kw in line for kw in self.config.end_keywords):
-                        break    
+                if any(kw in line for kw in self.config.end_keywords):
+                    break    
             except Exception as e:
                 logger.error(f"Error extracting minimum payment from line: {line}. Error: {e}")
 
@@ -111,7 +140,7 @@ class MYB(BaseBank):
             # Process each card block
             for key, block in blocks.items():
                 logger.debug(f"Processing block for card: {key}")
-                results[key] = self.process_block(block, lines)
+                results[key] = self.process_block(block)
                 if key in min_payments:
                     results[key]["minimum_payment"] = min_payments[key]
 

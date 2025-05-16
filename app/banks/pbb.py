@@ -21,10 +21,36 @@ class PBB(BaseBank):
             balance_due_keywords=["Jumlah besar untuk akaun ini / Grand total for this account"],
             retail_purchase_keywords=["This month total debit"],
             minimum_payment_keywords=[],
-            foreign_currencies=["AUD", "USD", "IDR", "SGD", "THB", "PHP", "GBP"]
+            foreign_currencies=["AUD", "USD", "IDR", "SGD", "THB", "PHP", "GBP"],
+            statement_date_keyword=["Payment Due Date"],
+            payment_date_keyword=[]
         )
 
-
+    def process_date(self, lines: List[str]) -> Dict[str,str]:
+        logger.debug("Processing statement and payment dates.")
+        date = self.date_dict()
+        subset = lines[0:50]
+        i = 0
+        while i < len(subset):
+            line = subset[i].strip()
+            next_line = subset[i+1].strip()
+            logger.debug(f"processing line: {line}")
+            try:
+                if any(kw in line for kw in self.config.statement_date_keyword):
+                    date["statement_date"] = self.extract_date(next_line)
+                    date["payment_date"] = self.extract_date(subset[i+3])
+                    logger.debug(f"Extracted statement date : {date["statement_date"]}")
+                    
+                
+                elif date["statement_date"] and date["payment_date"]:
+                    logger.debug("Both statement and payment dates have been extracted, stopping further processing.")
+                    break
+            except Exception as e:
+                logger.error(f"Error processing line: {line}. Error: {e}")
+            i += 1  
+        logger.debug(f"Extracted dates: {date}")
+        return date
+    
     def process_block(self, block: List[str]) -> Dict[str, float]:
         logger.debug("Processing a block of financial data.")
         

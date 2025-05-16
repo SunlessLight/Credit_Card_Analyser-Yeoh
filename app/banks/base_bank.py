@@ -19,7 +19,12 @@ class BankConfig:
     retail_purchase_keywords: List[str]
     minimum_payment_keywords : List[str]
     foreign_currencies: List[str]
+    statement_date_keyword : List[str]
+    payment_date_keyword : List[str]
+    date_pattern: str = r"((?:\d{2} \w{3} \d{4})|(?:\d{2} \w{3} \d{2})|(?:\d{2}/\d{2}/\d{4})|(?:\d{2}/\d{2}/\d{2})|(?:\d{4}-\d{2}-\d{2})|(?:\d{2}-\d{2}-\d{4})|(?:\d{2}-\d{2}-\d{2}))"
     amount_pattern: str = r"(\d{1,3}(?:,\d{3})*\.\d{2})"
+    
+   
     
 
 class BaseBank(ABC):
@@ -74,12 +79,13 @@ class BaseBank(ABC):
                 
                 # Detect end of block
                 if in_block and any(end_kw in clean_line for end_kw in self.config.end_keywords):
+                    logger.debug(f"Detected end keyword. Ending block for card: {current_card}")
                     logger.debug(f"Ending block for card: {current_card}")
                     blocks[current_card] = current_block + [line]
                     current_card = None
                     current_block = []
                     in_block = False
-                    continue
+                    break
                 
                 if in_block:
                     current_block.append(line)
@@ -124,7 +130,7 @@ class BaseBank(ABC):
                 data["credit_payment"] -= amount
                 logger.debug(f"Extracted credit payment: {data["credit_payment"]}")
             else:
-                data["credit_payment"] = 0.00
+                data["credit_payment"] -= 0.00
                 logger.debug("No amount found for credit payment.")
 
 
@@ -161,7 +167,7 @@ class BaseBank(ABC):
         amount = self.extract_amount(line)
         if amount and amount > 0:
             data["retail_purchase"] += amount
-            logger.debug(f"Extracted retail purchase: {data['retail_purchase']}")
+            logger.debug(f"Extracted retail purchase: {amount}")
         else:
             data["retail_purchase"] =+ 0.00
             logger.debug("No amount found for retail purchase.")
@@ -180,6 +186,27 @@ class BaseBank(ABC):
         except Exception as e:
             logger.error(f"Error extracting amount from text: {text}. Error: {e}")
             return None
+
+    def date_dict(self) -> Dict[str,str]:
+        return {
+            "statement_date": "",
+            "payment_date": ""
+        }
+
+    def extract_date(self, line:str) -> str:
+        logger.debug(f"Extracting date from line: {line}")
+        try:
+            match = re.search(self.config.date_pattern, line)
+            if match:
+                date = match.group(1)
+                logger.debug(f"Extracted date: {date}")
+                return date
+            else:
+                logger.warning(f"No date found in line: {line}")
+                return None
+        except Exception as e:
+            logger.error(f"Error extracting date from line: {line}. Error: {e}")
+
 
     def is_amount_line(self, line: str) -> bool:
         logger.debug(f"Checking if line is an amount: {line}")

@@ -12,8 +12,8 @@ class HLB(BaseBank):
         logger.debug("Fetching HLB bank configuration.")
         return BankConfig(
             name="HLB",
-            card_pattern=r"(\d{4} \d{4} \d{4}(\d{4}))",  # Full 16-digit card number
-            start_keywords=["YOUR TRANSACTION DETAILS / TRANSAKSI TERPERINCI ANDA"],  # Combined pattern
+            card_pattern=r"(\d{4} \d{4} \d{4} (\d{4}))",  # Full 16-digit card number
+            start_keywords=["Deskripsi Transaksi"],  # Combined pattern
             end_keywords=["TOTAL BALANCE","TOTAL Minimum Payment"],
             previous_balance_keywords=["PREVIOUS BALANCE FROM LAST STATEMENT"],
             credit_payment_keywords=["CR"],
@@ -22,9 +22,36 @@ class HLB(BaseBank):
             retail_purchase_keywords=[],
             minimum_payment_keywords=["TOTAL Minimum Payment"],
             foreign_currencies=["AUD", "USD", "IDR", "SGD", "THB", "PHP", "GBP"],
-            
+            statement_date_keyword=["Statement Date"],
+            payment_date_keyword=["Payment Due Date"],
         )
 
+    def process_date(self, lines: List[str]) -> Dict[str,str]:
+        logger.debug("Processing statement and payment dates.")
+        date = self.date_dict()
+        subset = lines[0:50]
+        i = 0
+        while i < len(subset):
+            line = subset[i].strip()
+            next_line = subset[i+1].strip()
+            logger.debug(f"processing line: {line}")
+            try:
+                if any(kw in line for kw in self.config.statement_date_keyword):
+                    date["statement_date"] = self.extract_date(next_line)
+                    logger.debug(f"Extracted statement date : {date["statement_date"]}")
+                    i += 1
+                elif any(kw in line for kw in self.config.payment_date_keyword):
+                    date["payment_date"] = self.extract_date(subset[i+2])
+                    logger.debug(f"Extracted payment date : {date["payment_date"]}")
+                    i += 1
+                elif date["statement_date"] and date["payment_date"]:
+                    logger.debug("Both statement and payment dates have been extracted, stopping further processing.")
+                    break
+            except Exception as e:
+                logger.error(f"Error processing line: {line}. Error: {e}")
+            i += 1  
+        logger.debug(f"Extracted dates: {date}")
+        return date
 
     def process_block(self, block: List[str]) -> Dict[str, float]:
         logger.debug("Processing a block of financial data.")
@@ -66,6 +93,8 @@ class HLB(BaseBank):
             i += 1
 
         logger.debug(f"Processed block data: {data}")
+        for key in data:
+            data[key] = round(data[key],2)
         return data
 
     def extract_minimum_payments_from_text(self, lines: List[str]) -> Dict[str, float]:
@@ -75,9 +104,9 @@ class HLB(BaseBank):
             try:
                 match = re.search(self.config.card_pattern, line)
                 if match and i + 5 < len(lines):
-                    
                     last4 = match.group(2)
-                    amount = self.extract_amount(lines[i + 4])
+                    logger.debug(f"Detected card number: {last4}")
+                    amount = self.extract_amount(lines[i + 5])
                     if amount is not None:
                         card_minimums[last4] = amount
                         logger.debug(f"Extracted minimum payment for card {last4}: {amount}")
