@@ -25,9 +25,9 @@ class UOB(BaseBank):
             foreign_currencies=["AUD", "USD", "IDR", "SGD", "THB", "PHP"],
             statement_date_keyword=["Tarikh Penyata"],
             payment_date_keyword=["Tarikh Akhir Bayaran"],
-            
-
         )
+
+    
 
     def process_date(self, lines: List[str]) -> Dict[str,str]:
         logger.debug("Processing statement and payment dates.")

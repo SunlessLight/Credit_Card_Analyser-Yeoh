@@ -42,9 +42,6 @@ class BaseBank(ABC):
     def get_config(cls) -> BankConfig:
         """Return bank-specific configuration"""
         pass
-
-    
-
     
     def create_blocks(self, lines: List[str]) -> Dict[str, List[str]]:
         logger.debug("Starting to create blocks from statement lines.")
@@ -80,7 +77,6 @@ class BaseBank(ABC):
                 # Detect end of block
                 if in_block and any(end_kw in clean_line for end_kw in self.config.end_keywords):
                     logger.debug(f"Detected end keyword. Ending block for card: {current_card}")
-                    logger.debug(f"Ending block for card: {current_card}")
                     blocks[current_card] = current_block + [line]
                     current_card = None
                     current_block = []
