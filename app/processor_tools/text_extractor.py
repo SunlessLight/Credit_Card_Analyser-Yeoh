@@ -8,18 +8,16 @@ logger = get_logger(__name__)
 
 class TextExtractor:
     @staticmethod
-    def extract_text(pdf_path: str) -> List[str]:
+    def extract_text(pdf_path: str, password: str = None) -> List[str]:
         """Extract text from PDF and automatically save raw text file"""
         try:
-            while True:
-                password = get_password_from_bank()
-                doc = fitz.open(pdf_path)
-                if doc.is_encrypted:
-                    if not password or not doc.authenticate(password):
-                        print("❌ Incorrect password. Please try again.")
-                        logger.info("Incorrect password. Prompting user to ty again")
-                        continue
-                break
+            
+            
+            doc = fitz.open(pdf_path)
+            if doc.is_encrypted:
+                if not password or not doc.authenticate(password):
+                    raise RuntimeError("Incorrect password. Please try again.")
+                        
             logger.info("Received correct password. Proceeding with text extraction.")
             
             lines = [
@@ -32,7 +30,7 @@ class TextExtractor:
             text_path = str(Path(pdf_path).with_suffix('.raw.txt'))
             with open(text_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(lines))
-            print(f"Saved raw text to: {text_path}")
+            logger.info(f"Saved raw text to: {text_path}")
             
             return lines
             
@@ -48,6 +46,6 @@ class TextExtractor:
                 for card, block_lines in blocks.items():
                     f.write(f"===== Card: {card} =====\n")
                     f.write("\n".join(block_lines) + "\n\n")
-            print(f"Saved blocks to: {blocks_path}")
+            logger.info(f"Saved blocks to: {blocks_path}")
         except Exception as e:
             logger.error(f"Encountered error: {e}")

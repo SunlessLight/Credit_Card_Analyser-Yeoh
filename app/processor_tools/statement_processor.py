@@ -20,9 +20,9 @@ class CreditCardProcessor:
         self.bank = self.BANK_CLASSES[bank]()
         self.bank_name = bank
 
-    def parse_statement(self, pdf_path: str) -> Dict[str, Dict[str, float]]:
+    def parse_statement(self, pdf_path: str, password: str = None) -> Dict[str, Dict[str, float]]:
         """Always generates both raw text and blocks files"""
-        lines = TextExtractor.extract_text(pdf_path)  # extract_text now saves raw text
+        lines = TextExtractor.extract_text(pdf_path, password = password)  # extract_text now saves raw text
         blocks = self.bank.create_blocks(lines)
         
         TextExtractor.save_blocks(pdf_path,blocks)

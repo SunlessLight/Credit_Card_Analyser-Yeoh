@@ -20,20 +20,8 @@ class ExcelManager(JSONFileHandler):
         logger.info(f"ExcelManager initialized for {self.bank_name}. date and results obtained")
         
     def get_record_number(self):
-        while True:
-            try:
-                num = input("Enter record number to update (1 = first, 2 = second, etc.): ").strip()
-                if num.lower() == 'q':
-                    return None
-                    
-                num = int(num)
-                if num >= 1:
-                    logger.info(f"Record number obtained {num}")
-                    return num
-                    
-                print("❌ Record number must be 1 or higher")
-            except ValueError:
-                print("❌ Please enter a valid number")
+        logger.warning("record no entered in GUI mode. This should be handled by the GUI.")
+        raise NotImplementedError("get_record_no is not available in GUI mode.")
 
     def set_alignment(self, ws:worksheet, record_no:int, result: Dict[str, Dict[str, float]] ):
         try:
@@ -78,10 +66,8 @@ class ExcelManager(JSONFileHandler):
         
     
 
-    def create_excel_file(self):
+    def create_excel_file(self, save_path = None):
         logger.info(f"Creating new Excel file")
-        import tkinter as tk
-        from tkinter import filedialog
 
         logger.info(f"Creating new json file")
         self.create_json_file()
@@ -103,36 +89,22 @@ class ExcelManager(JSONFileHandler):
 
             self.set_alignment(ws, 1, result)
         
-            root = tk.Tk()
-            root.withdraw()  # Hide the main window
-            root.lift()
-            root.attributes('-topmost', True)
-            root.after_idle(root.attributes, '-topmost', False)
-            save_path = filedialog.asksaveasfilename(
-                defaultextension=".xlsx",
-                filetypes=[("Excel files", "*.xlsx")],
-                initialfile="Credit Card Tracker.xlsx",
-                title="Save Excel File As"
-            )
-            root.destroy()
+            
 
-            if save_path:
-                wb.save(save_path)
-                print(f"Excel file saved at: {save_path}")
-            else:
-                print("Save cancelled by user.")
+            if not save_path:
+                logger.error("No save_path provided for create_excel_file in GUI mode.")
+                raise ValueError("No save_path provided for create_excel_file in GUI mode.")
+            wb.save(save_path)
+            logger.info(f"Excel file saved at: {save_path}")
         except Exception as e:
             logger.error(f"Failed to create Excel file: {e}")
             raise RuntimeError(f"Failed to create Excel file: {str(e)}")
 
     
 
-    def update_excel(self, excel_path:str):
+    def update_excel(self, excel_path:str, record_no: int):
 
         logger.info(f"Getting record number")
-        record_no = self.get_record_number()
-        
-
         self.update_json(record_no)
 
         data = self.open_json()
@@ -162,7 +134,7 @@ class ExcelManager(JSONFileHandler):
 
             wb.save(excel_path)
             logger.info(f"Excel file updated successfully")
-            print(f"✅ Excel updated and saved: {excel_path}")
+            
 
         except Exception as e:
             logger.error(f"Failed to update Excel file: {e}")
@@ -193,7 +165,7 @@ class ExcelManager(JSONFileHandler):
 
             wb.save(excel_path)
             logger.info(f"Excel file updated successfully")
-            print(f"✅ Excel updated and saved: {excel_path}")
+            
 
         except Exception as e:
             logger.error(f"Failed to create Excel file: {e}")

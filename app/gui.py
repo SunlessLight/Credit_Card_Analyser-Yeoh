@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
-from .processor_tools import ExcelManager, CreditCardProcessor
+from statement_analyser_personal.app.processor_tools import ExcelManager, CreditCardProcessor
 from statement_analyser_personal.logger import get_logger
 
 logger = get_logger(__name__)
@@ -9,10 +9,12 @@ class CreditCardGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Statement Analyser")
-        self.root.geometry("650x500")
+        self.root.geometry("700x600")
 
         self.processor = None
         self.excel_manager = None
+        self.result = None
+        self.dates = None
 
         self._create_widgets()
 
@@ -29,6 +31,11 @@ class CreditCardGUI:
         self.pdf_entry = tk.Entry(self.root, width=60)
         self.pdf_entry.pack()
         tk.Button(self.root, text="Browse PDF", command=self.select_pdf).pack()
+
+        # Password entry
+        tk.Label(self.root, text="PDF Password (if needed):").pack(pady=5)
+        self.password_entry = tk.Entry(self.root, show="*")
+        self.password_entry.pack()
 
         # Parse button
         tk.Button(self.root, text="Parse Statement", command=self.parse_statement).pack(pady=10)
@@ -55,14 +62,7 @@ class CreditCardGUI:
         tk.Radiobutton(frame, text="Create New Excel", variable=self.excel_mode, value="c").pack(side=tk.LEFT)
         tk.Radiobutton(frame, text="Update Existing Excel", variable=self.excel_mode, value="u").pack(side=tk.LEFT)
 
-        # New bank option (only for update)
-        self.new_bank_var = tk.StringVar(value="n")
-        self.new_bank_frame = tk.Frame(self.root)
-        tk.Label(self.new_bank_frame, text="Is this a new bank?").pack(side=tk.LEFT)
-        tk.Radiobutton(self.new_bank_frame, text="Yes", variable=self.new_bank_var, value="y").pack(side=tk.LEFT)
-        tk.Radiobutton(self.new_bank_frame, text="No", variable=self.new_bank_var, value="n").pack(side=tk.LEFT)
-        self.new_bank_frame.pack(pady=5)
-        self.new_bank_frame.pack_forget()  # Hide initially
+        
 
         # Button to run Excel operation
         tk.Button(self.root, text="Run Excel Operation", command=self.run_excel_operation).pack(pady=10)
@@ -71,30 +71,54 @@ class CreditCardGUI:
         self.status_label = tk.Label(self.root, text="", fg="green")
         self.status_label.pack(pady=5)
 
-        # Bindings
-        self.excel_mode.trace_add("write", self.toggle_new_bank_option)
 
     def select_pdf(self):
-        path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
-        if path:
-            self.pdf_entry.delete(0, tk.END)
-            self.pdf_entry.insert(0, path)
+        while True:
+            path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
+            if not path:
+                if not messagebox.askretrycancel("No PDF Selected", "No PDF file selected. Do you want to try again?"):
+                    return
+            else:
+                self.pdf_entry.delete(0, tk.END)
+                self.pdf_entry.insert(0, path)
+                break
 
     def select_excel(self):
-        path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx"), ("Excel files", "*.xls")])
-        if path:
-            self.excel_entry.delete(0, tk.END)
-            self.excel_entry.insert(0, path)
+        while True:
+            path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx"), ("Excel files", "*.xls")])
+            if not path:
+                if not messagebox.askretrycancel("No Excel Selected", "No Excel file selected. Do you want to try again?"):
+                    return
+            else:
+                self.excel_entry.delete(0, tk.END)
+                self.excel_entry.insert(0, path)
+                break
 
-    def toggle_new_bank_option(self, *args):
-        if self.excel_mode.get() == "u":
-            self.new_bank_frame.pack(pady=5)
-        else:
-            self.new_bank_frame.pack_forget()
+    def ask_new_bank(self):
+        """Popup dialog to ask if this is a new bank."""
+        win = tk.Toplevel(self.root)
+        win.title("New Bank?")
+        win.grab_set()  # Make modal
+
+        tk.Label(win, text="Is this a new bank?").pack(padx=20, pady=10)
+        result = {"choice": None}
+
+        def choose(choice):
+            result["choice"] = choice
+            win.destroy()
+
+        btn_frame = tk.Frame(win)
+        btn_frame.pack(pady=10)
+        tk.Button(btn_frame, text="Yes", width=10, command=lambda: choose("y")).pack(side=tk.LEFT, padx=5)
+        tk.Button(btn_frame, text="No", width=10, command=lambda: choose("n")).pack(side=tk.LEFT, padx=5)
+
+        self.root.wait_window(win)
+        return result["choice"]
 
     def parse_statement(self):
         bank = self.bank_var.get()
         pdf_path = self.pdf_entry.get()
+        password = self.password_entry.get()
         if not bank or not pdf_path:
             messagebox.showerror("Missing Info", "Please select a bank and PDF file.")
             return
@@ -105,16 +129,62 @@ class CreditCardGUI:
             self.result_text.config(state="normal")
             self.result_text.delete(1.0, tk.END)
             self.result_text.insert(tk.END, f"Parsing {pdf_path} for {bank}...\n")
-            result, dates = self.processor.parse_statement(pdf_path)
-            self.result_text.insert(tk.END, f"Results: {result}\nDates: {dates}\n")
+            # Password handling loop
+            while True:
+                try:
+                    result, dates = self.processor.parse_statement(pdf_path, password=password)
+                    break
+                except Exception as e:
+                    logger.error(f"Error parsing statement: {e}")
+                    if "password" in str(e).lower() or "decrypt" in str(e).lower():
+                        password = self.prompt_password("Incorrect password. Please re-enter the PDF password:")
+                        if password is None:
+                            self.status_label.config(text="Parsing cancelled.", fg="red")
+                            self.result_text.insert(tk.END, "Parsing cancelled by user.\n")
+                            self.result_text.config(state="disabled")
+                            return
+                        self.password_entry.delete(0, tk.END)
+                        self.password_entry.insert(0, password)
+                        continue
+                    else:
+                        self.status_label.config(text=f"Error: {e}", fg="red")
+                        messagebox.showerror("Error", str(e))
+                        self.result_text.insert(tk.END, f"Error: {e}\n")
+                        self.result_text.config(state="disabled")
+                        return
+            self.result = result
+            self.dates = dates
+            formatted = self.format_results(result, dates)
+            self.result_text.insert(tk.END, formatted + "\n")
             self.result_text.config(state="disabled")
             self.status_label.config(text="Statement parsed successfully.", fg="green")
-            # Prepare ExcelManager for next step
             self.excel_manager = ExcelManager(self.processor.bank_name, dates, result)
         except Exception as e:
             logger.error(f"Error parsing statement: {e}")
             self.status_label.config(text=f"Error: {e}", fg="red")
             messagebox.showerror("Error", str(e))
+
+    def prompt_password(self, prompt):
+        pw_win = tk.Toplevel(self.root)
+        pw_win.title("Enter PDF Password")
+        tk.Label(pw_win, text=prompt).pack(padx=10, pady=10)
+        pw_var = tk.StringVar()
+        pw_entry = tk.Entry(pw_win, textvariable=pw_var, show="*")
+        pw_entry.pack(padx=10, pady=5)
+        pw_entry.focus_set()
+        result = {"password": None}
+
+        def submit():
+            result["password"] = pw_var.get()
+            pw_win.destroy()
+
+        def cancel():
+            pw_win.destroy()
+
+        tk.Button(pw_win, text="OK", command=submit).pack(side=tk.LEFT, padx=10, pady=10)
+        tk.Button(pw_win, text="Cancel", command=cancel).pack(side=tk.RIGHT, padx=10, pady=10)
+        self.root.wait_window(pw_win)
+        return result["password"]
 
     def run_excel_operation(self):
         if not self.excel_manager:
@@ -127,24 +197,36 @@ class CreditCardGUI:
             return
         try:
             record_no = int(record_no)
-            if record_no < 1:
-                raise ValueError
+            
         except Exception:
             messagebox.showerror("Invalid Input", "Record number must be an integer >= 1.")
             return
 
         try:
             if self.excel_mode.get() == "c":
-                self.excel_manager.create_excel_file()
+                save_path = filedialog.asksaveasfilename(
+                    defaultextension=".xlsx",
+                    filetypes=[("Excel files", "*.xlsx")],
+                    initialfile="Credit Card Tracker.xlsx",
+                    title="Save Excel File As"
+                )
+                if not save_path:
+                    messagebox.showwarning("Cancelled", "Save cancelled by user.")
+                    return
+                self.excel_manager.create_excel_file(save_path=save_path)
                 self.status_label.config(text="Excel file created.", fg="green")
                 messagebox.showinfo("Success", "Excel file created successfully.")
             elif self.excel_mode.get() == "u":
-                if self.new_bank_var.get() == "y":
+                new_bank_choice = self.ask_new_bank()
+                if new_bank_choice is None:
+                    messagebox.showwarning("Cancelled", "Operation cancelled by user.")
+                    return
+                if new_bank_choice == "y":
                     self.excel_manager.insert_new_bank(excel_path)
                     self.status_label.config(text="New bank inserted.", fg="green")
                     messagebox.showinfo("Success", "New bank inserted successfully.")
                 else:
-                    self.excel_manager.update_excel(excel_path)
+                    self.excel_manager.update_excel(excel_path, record_no)
                     self.status_label.config(text="Excel file updated.", fg="green")
                     messagebox.showinfo("Success", "Excel file updated successfully.")
         except Exception as e:
@@ -152,7 +234,29 @@ class CreditCardGUI:
             self.status_label.config(text=f"Error: {e}", fg="red")
             messagebox.showerror("Error", str(e))
 
+    def format_results(self, result: dict, dates: dict) -> str:
+        lines = []
+        lines.append(f"Statement Date: {dates.get('statement_date', '')}")
+        lines.append(f"Payment Due Date: {dates.get('payment_date', '')}")
+        lines.append("")
+        lines.append("Card No. | Prev Bal | Credit Pay | Debit Fees | Retail Purch | Bal Due | Min Pay")
+        lines.append("-" * 75)
+        for card, values in result.items():
+            lines.append(
+                f"{card:>7} | "
+                f"{values['previous_balance']:>8.2f} | "
+                f"{values['credit_payment']:>10.2f} | "
+                f"{values['debit_fees']:>10.2f} | "
+                f"{values['retail_purchase']:>12.2f} | "
+                f"{values['balance_due']:>7.2f} | "
+                f"{values['minimum_payment']:>7.2f}"
+            )
+        return "\n".join(lines)
+
 def main():
     root = tk.Tk()
     app = CreditCardGUI(root)
     root.mainloop()
+
+if __name__ == "__main__":
+    main()
