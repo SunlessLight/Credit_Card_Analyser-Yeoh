@@ -1,76 +1,207 @@
 from pathlib import Path
-from openpyxl.utils import get_column_letter
 from copy import copy
-from openpyxl.worksheet.worksheet import Worksheet
+from openpyxl.worksheet import worksheet
 import json
+import os
+from openpyxl import load_workbook
+from openpyxl.styles import Font, Border, PatternFill, Protection, Alignment
+from openpyxl import Workbook
+from typing import Dict, List
 from statement_analyser_personal.logger import get_logger
+from statement_analyser_personal.app.processor_tools.json_file_handling import JSONFileHandler
 
 logger = get_logger(__name__)
 
-class ExcelManager:
-    def __init__(self, card_ordered_map_path: Path):
-        self.card_ordered_map_path = card_ordered_map_path
-        self.CARD_ORDERED_MAP = self._load_card_order_map()
+class ExcelManager(JSONFileHandler):
+    def __init__(self, bank_name:str, date:Dict[str,str], results:Dict[str, Dict[str,float]]):
+        self.bank_name = bank_name
+        self.date = date
+        self.results = results      
+        logger.info(f"ExcelManager initialized for {self.bank_name}. date and results obtained")
         
-    def _load_card_order_map(self) -> dict:
-        if not self.card_ordered_map_path.exists():
-            with open(self.card_ordered_map_path, "w", encoding="utf-8") as f:
-                json.dump({}, f, indent=2)
-            return {}
-        
-        with open(self.card_ordered_map_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    
-    def save_card_order_map(self, card_order_map: dict):
+    def get_record_number(self):
+        while True:
+            try:
+                num = input("Enter record number to update (1 = first, 2 = second, etc.): ").strip()
+                if num.lower() == 'q':
+                    return None
+                    
+                num = int(num)
+                if num >= 1:
+                    logger.info(f"Record number obtained {num}")
+                    return num
+                    
+                print("❌ Record number must be 1 or higher")
+            except ValueError:
+                print("❌ Please enter a valid number")
+
+    def set_alignment(self, ws:worksheet, record_no:int, result: Dict[str, Dict[str, float]] ):
         try:
-            with open(self.card_ordered_map_path, "w", encoding="utf-8") as f:
-                json.dump(card_order_map, f, indent=2)
-            print(f"✅ Saved card order map to {self.card_ordered_map_path}")
+            logger.info(f"Setting alignment for excel")
+            for row in range(3+(record_no-1)*8, 10+(record_no-1)*8):
+                for col in range(1, 4+len(result) ):
+                    cell = ws.cell(row = row, column = col)
+                    cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         except Exception as e:
-            print(f"Failed to save card order map: {e}")
+            logger.error(f"Failed to set alignment: {e}")
 
-    def insert_column_with_format_and_merge(self, ws: Worksheet, idx: int):
-        ws.insert_cols(idx)
+    def insert_header(self, ws:worksheet, record_no:int, data: Dict[str, str]):
+        logger.info(f"Writing header to excel")
+        list = ["Card No.", "Previous Balance", "Credit Payment", "Debit Fees", "Retail Purchases", "Balance Due", "Minimum Payment"]
+        ws[f"A{3 + (record_no -1)*8}"] = "Record No."
+        ws[f"A{4 + (record_no -1)*8}"] = data["record_number"]
+        ws.column_dimensions["A"].width = 10
+        ws[f"B{3 + (record_no -1)*8}"] = "Statement Date"
+        ws[f"B{4 + (record_no -1)*8}"] = data["statement_date"]
+        ws[f"B{8 + (record_no -1)*8}"] = "Payment Due Date"
+        ws[f"B{9 + (record_no -1)*8}"] = data["payment_date"]
+        ws.column_dimensions["B"].width = 16
+        ws.column_dimensions["C"].width = 16.
+        for i, header in enumerate(list, start = 1):
+            i += 2+(record_no-1)*8
+            ws[f"C{i}"] = header
+        logger.info(f"Headers written successfully")
 
-        max_row = ws.max_row
+    def insert_key_value(self, ws:worksheet, record_no:int, result: Dict[str, Dict[str,float]]):
+        logger.info(f"Writing result to excel")
+        for i, (card, values) in enumerate(result.items(), start = 1):
+                i += 3
+                ws.cell(row= 3+(record_no-1)*8, column = i, value = card)
+                ws.cell(row= 3+(record_no-1)*8, column = i).font = Font(bold = True)
+                ws.cell(row= 4+(record_no-1)*8, column = i, value = values["previous_balance"]),
+                ws.cell(row= 5+(record_no-1)*8, column = i, value = values["credit_payment"]),
+                ws.cell(row= 6+(record_no-1)*8, column = i, value = values["debit_fees"]),
+                ws.cell(row= 7+(record_no-1)*8, column = i, value = values["retail_purchase"]),    
+                ws.cell(row= 8+(record_no-1)*8, column = i, value = values["balance_due"]),
+                ws.cell(row= 9+(record_no-1)*8, column = i, value = values["minimum_payment"]),
+        logger.info(f"Excel file updated successfully")
+        
+    
 
-        # Preserve styles and formatting
-        for row in range(1, max_row + 1):
-            old_cell = ws.cell(row=row, column=idx + 1)
-            new_cell = ws.cell(row=row, column=idx)
-            if old_cell.has_style:
-                new_cell._style = copy(old_cell._style)
-            new_cell.font = copy(old_cell.font)
-            new_cell.border = copy(old_cell.border)
-            new_cell.fill = copy(old_cell.fill)
-            new_cell.number_format = copy(old_cell.number_format)
-            new_cell.protection = copy(old_cell.protection)
-            new_cell.alignment = copy(old_cell.alignment)
+    def create_excel_file(self):
+        logger.info(f"Creating new Excel file")
+        import tkinter as tk
+        from tkinter import filedialog
 
-        # Copy column width
-        col_letter_old = get_column_letter(idx + 1)
-        col_letter_new = get_column_letter(idx)
-        if col_letter_old in ws.column_dimensions:
-            ws.column_dimensions[col_letter_new].width = ws.column_dimensions[col_letter_old].width
+        logger.info(f"Creating new json file")
+        self.create_json_file()
 
-        # Handle merged cells
-        updated_merges = []
-        to_remove = []
+        data = self.open_json()
+        try:
+            wb = Workbook()
+            ws = wb.active
+            ws.title = self.bank_name
+            logger.info(f"Worksheet {self.bank_name} created")
 
-        for merged in ws.merged_cells.ranges:
-            min_col, max_col = merged.min_col, merged.max_col
+            self.insert_header(ws, 1, data)
 
-            if max_col < idx:
-                updated_merges.append(merged)
-            elif min_col > idx:
-                merged.shift(0, 1)
-                updated_merges.append(merged)
+            result = data["results1"]
+
+            logger.info(f"Writing result to excel")
+
+            self.insert_key_value(ws, 1, result)
+
+            self.set_alignment(ws, 1, result)
+        
+            root = tk.Tk()
+            root.withdraw()  # Hide the main window
+            root.lift()
+            root.attributes('-topmost', True)
+            root.after_idle(root.attributes, '-topmost', False)
+            save_path = filedialog.asksaveasfilename(
+                defaultextension=".xlsx",
+                filetypes=[("Excel files", "*.xlsx")],
+                initialfile="Credit Card Tracker.xlsx",
+                title="Save Excel File As"
+            )
+            root.destroy()
+
+            if save_path:
+                wb.save(save_path)
+                print(f"Excel file saved at: {save_path}")
             else:
-                to_remove.append(merged)
+                print("Save cancelled by user.")
+        except Exception as e:
+            logger.error(f"Failed to create Excel file: {e}")
+            raise RuntimeError(f"Failed to create Excel file: {str(e)}")
 
-        for r in to_remove:
-            ws.unmerge_cells(range_string=str(r))
+    
 
-        ws.merged_cells.ranges = []
-        for r in updated_merges:
-            ws.merged_cells.add(r)
+    def update_excel(self, excel_path:str):
+
+        logger.info(f"Getting record number")
+        record_no = self.get_record_number()
+        
+
+        self.update_json(record_no)
+
+        data = self.open_json()
+
+        logger.info(f"loading data for updating excel")
+        
+        try:
+            wb = load_workbook(excel_path)
+            logger.info(f"Available worksheets: {wb.sheetnames}")
+
+            if self.bank_name in wb.sheetnames:
+                ws = wb[self.bank_name]
+                logger.info(f"Sheet '{self.bank_name}' found in the workbook.")
+            else:
+                raise ValueError(f"Sheet '{self.bank_name}' not found in the workbook.")
+            
+            self.insert_header(ws, record_no, data)
+
+            result = data[f"results{record_no}"]
+            logger.info(f"Writing result to excel")
+
+            self.insert_key_value(ws, record_no, result)
+
+            
+            self.set_alignment(ws, record_no, result)
+
+
+            wb.save(excel_path)
+            logger.info(f"Excel file updated successfully")
+            print(f"✅ Excel updated and saved: {excel_path}")
+
+        except Exception as e:
+            logger.error(f"Failed to update Excel file: {e}")
+            raise RuntimeError(f"Failed to update Excel file: {str(e)}")
+
+    def insert_new_bank(self, excel_path:str):
+
+        logger.info(f"Creating new bank in existing excel file")
+
+        logger.info(f"Creating new json file")
+        self.create_json_file()
+        
+        data = self.open_json()
+
+        try:
+            wb = load_workbook(excel_path)
+            ws = wb.create_sheet(self.bank_name)
+
+            logger.info(f"Inserting header for new bank")
+            self.insert_header(ws, 1, data)
+
+            result = data["results1"]
+
+            logger.info(f"Writing result to excel")
+            self.insert_key_value(ws, 1, result)
+
+            self.set_alignment(ws, 1, result)
+
+            wb.save(excel_path)
+            logger.info(f"Excel file updated successfully")
+            print(f"✅ Excel updated and saved: {excel_path}")
+
+        except Exception as e:
+            logger.error(f"Failed to create Excel file: {e}")
+            raise RuntimeError(f"Failed to create Excel file: {str(e)}")
+
+    
+
+            
+
+
+

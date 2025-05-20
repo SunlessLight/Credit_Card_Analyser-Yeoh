@@ -2,7 +2,8 @@ from statement_analyser_personal.logger import get_logger
 
 logger = get_logger(__name__)
 
-def get_password_from_bank(selected_bank:str):
+def get_password_from_bank():
      # Always ask the user for the password
-    password = input(f"Enter password for {selected_bank} (leave empty if none): ").strip() or None
+    password = input(f"Enter password (leave empty if none): ").strip() or None
+    logger.info("Getting password for pdf")
     return password

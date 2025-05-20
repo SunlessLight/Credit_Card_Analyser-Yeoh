@@ -1,46 +1,43 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from .processor_tools import ExcelManager, CreditCardProcessor
-from .main_tools import get_resource_path
 from statement_analyser_personal.logger import get_logger
 
 logger = get_logger(__name__)
-
-CARD_ORDERED_MAP_PATH = get_resource_path("data/card_order_map.json")
-
 
 class CreditCardGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Statement Analyser")
-        self.root.geometry("600x400")
+        self.root.geometry("650x500")
 
         self.processor = None
-        self.selected_pdf = None
+        self.excel_manager = None
 
         self._create_widgets()
 
     def _create_widgets(self):
-        # PDF selection
-        tk.Label(self.root, text="Select PDF file:").pack(pady=5)
-        self.pdf_entry = tk.Entry(self.root, width=60)  # Fixed variable name
-        self.pdf_entry.pack()
-        tk.Button(self.root, text="Browse PDF", command=self.select_pdf).pack()
-
         # Bank selection
         tk.Label(self.root, text="Select Bank:").pack(pady=5)
         self.bank_var = tk.StringVar()
-        self.bank_dropdown = ttk.Combobox(self.root, textvariable=self.bank_var)
+        self.bank_dropdown = ttk.Combobox(self.root, textvariable=self.bank_var, state="readonly")
         self.bank_dropdown['values'] = list(CreditCardProcessor.BANK_CLASSES.keys())
         self.bank_dropdown.pack()
-        self.bank_dropdown.bind("<<ComboboxSelected>>", self.update_password_field)
 
-        # Password entry
-        tk.Label(self.root, text="PDF Password:").pack(pady=5)
-        self.password_entry = ttk.Entry(self.root, show="*")
-        self.password_entry.pack(pady=5)
+        # PDF selection
+        tk.Label(self.root, text="Select PDF file:").pack(pady=5)
+        self.pdf_entry = tk.Entry(self.root, width=60)
+        self.pdf_entry.pack()
+        tk.Button(self.root, text="Browse PDF", command=self.select_pdf).pack()
 
-        # Excel file path
+        # Parse button
+        tk.Button(self.root, text="Parse Statement", command=self.parse_statement).pack(pady=10)
+
+        # Show result area
+        self.result_text = tk.Text(self.root, height=8, width=75, state="disabled")
+        self.result_text.pack(pady=5)
+
+        # Excel file selection
         tk.Label(self.root, text="Excel File:").pack(pady=5)
         self.excel_entry = tk.Entry(self.root, width=60)
         self.excel_entry.pack()
@@ -51,12 +48,31 @@ class CreditCardGUI:
         self.record_entry = tk.Entry(self.root)
         self.record_entry.pack()
 
-        # Parse button
-        tk.Button(self.root, text="Parse and Update Excel", command=self.run_parser).pack(pady=10)
+        # New or update Excel
+        self.excel_mode = tk.StringVar(value="c")
+        frame = tk.Frame(self.root)
+        frame.pack(pady=5)
+        tk.Radiobutton(frame, text="Create New Excel", variable=self.excel_mode, value="c").pack(side=tk.LEFT)
+        tk.Radiobutton(frame, text="Update Existing Excel", variable=self.excel_mode, value="u").pack(side=tk.LEFT)
+
+        # New bank option (only for update)
+        self.new_bank_var = tk.StringVar(value="n")
+        self.new_bank_frame = tk.Frame(self.root)
+        tk.Label(self.new_bank_frame, text="Is this a new bank?").pack(side=tk.LEFT)
+        tk.Radiobutton(self.new_bank_frame, text="Yes", variable=self.new_bank_var, value="y").pack(side=tk.LEFT)
+        tk.Radiobutton(self.new_bank_frame, text="No", variable=self.new_bank_var, value="n").pack(side=tk.LEFT)
+        self.new_bank_frame.pack(pady=5)
+        self.new_bank_frame.pack_forget()  # Hide initially
+
+        # Button to run Excel operation
+        tk.Button(self.root, text="Run Excel Operation", command=self.run_excel_operation).pack(pady=10)
 
         # Status label
         self.status_label = tk.Label(self.root, text="", fg="green")
         self.status_label.pack(pady=5)
+
+        # Bindings
+        self.excel_mode.trace_add("write", self.toggle_new_bank_option)
 
     def select_pdf(self):
         path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
@@ -65,55 +81,76 @@ class CreditCardGUI:
             self.pdf_entry.insert(0, path)
 
     def select_excel(self):
-        path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
+        path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx"), ("Excel files", "*.xls")])
         if path:
             self.excel_entry.delete(0, tk.END)
             self.excel_entry.insert(0, path)
 
-    def show_processing_popup(self):
-        popup = tk.Toplevel(self.root)
-        popup.title("Processing")
-        tk.Label(popup, text="Parsing in progress... Please wait.").pack(padx=20, pady=20)
-        popup.grab_set()
-        self.root.update()
-        return popup
+    def toggle_new_bank_option(self, *args):
+        if self.excel_mode.get() == "u":
+            self.new_bank_frame.pack(pady=5)
+        else:
+            self.new_bank_frame.pack_forget()
 
-    def run_parser(self):
-        selected_pdf = self.pdf_entry.get()
+    def parse_statement(self):
         bank = self.bank_var.get()
-        excel_path = self.excel_entry.get()
-        record_number = self.record_entry.get()
-        password = self.password_entry.get()
-
-        if not (selected_pdf and bank and excel_path and record_number):
-            messagebox.showerror("Missing Info", "Please fill in all fields.")
+        pdf_path = self.pdf_entry.get()
+        if not bank or not pdf_path:
+            messagebox.showerror("Missing Info", "Please select a bank and PDF file.")
             return
-
         try:
-            record_number = int(record_number)
-        except ValueError:
-            messagebox.showerror("Invalid Number", "Record number must be an integer.")
-            return
-
-        self.processor = CreditCardProcessor(bank, ExcelManager(CARD_ORDERED_MAP_PATH))
-
-        popup = self.show_processing_popup()
-        try:
-            results = self.processor.parse_statement(selected_pdf, password)
-            self.processor.write_to_excel(results, excel_path, record_number)
-            popup.destroy()
-            self.status_label.config(text="Parsing and Excel update complete.", fg="green")
-            messagebox.showinfo("Success", "Parsing and Excel update complete.")
+            self.processor = CreditCardProcessor(bank)
+            logger.info(f"Processor initialised for bank: {bank}")
+            # Show result in text area
+            self.result_text.config(state="normal")
+            self.result_text.delete(1.0, tk.END)
+            self.result_text.insert(tk.END, f"Parsing {pdf_path} for {bank}...\n")
+            result, dates = self.processor.parse_statement(pdf_path)
+            self.result_text.insert(tk.END, f"Results: {result}\nDates: {dates}\n")
+            self.result_text.config(state="disabled")
+            self.status_label.config(text="Statement parsed successfully.", fg="green")
+            # Prepare ExcelManager for next step
+            self.excel_manager = ExcelManager(self.processor.bank_name, dates, result)
         except Exception as e:
-            popup.destroy()
-            self.status_label.config(text=f"Error: {str(e)}", fg="red")
+            logger.error(f"Error parsing statement: {e}")
+            self.status_label.config(text=f"Error: {e}", fg="red")
             messagebox.showerror("Error", str(e))
 
-    def update_password_field(self, event=None):
-        # Always allow the user to input the password manually
-        self.password_entry.config(state="normal")
-        self.password_entry.delete(0, tk.END)
+    def run_excel_operation(self):
+        if not self.excel_manager:
+            messagebox.showerror("Error", "Please parse a statement first.")
+            return
+        excel_path = self.excel_entry.get()
+        record_no = self.record_entry.get()
+        if self.excel_mode.get() == "u" and not excel_path:
+            messagebox.showerror("Missing Info", "Please select an Excel file to update.")
+            return
+        try:
+            record_no = int(record_no)
+            if record_no < 1:
+                raise ValueError
+        except Exception:
+            messagebox.showerror("Invalid Input", "Record number must be an integer >= 1.")
+            return
 
+        try:
+            if self.excel_mode.get() == "c":
+                self.excel_manager.create_excel_file()
+                self.status_label.config(text="Excel file created.", fg="green")
+                messagebox.showinfo("Success", "Excel file created successfully.")
+            elif self.excel_mode.get() == "u":
+                if self.new_bank_var.get() == "y":
+                    self.excel_manager.insert_new_bank(excel_path)
+                    self.status_label.config(text="New bank inserted.", fg="green")
+                    messagebox.showinfo("Success", "New bank inserted successfully.")
+                else:
+                    self.excel_manager.update_excel(excel_path)
+                    self.status_label.config(text="Excel file updated.", fg="green")
+                    messagebox.showinfo("Success", "Excel file updated successfully.")
+        except Exception as e:
+            logger.error(f"Excel operation failed: {e}")
+            self.status_label.config(text=f"Error: {e}", fg="red")
+            messagebox.showerror("Error", str(e))
 
 def main():
     root = tk.Tk()

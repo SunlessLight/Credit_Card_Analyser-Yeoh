@@ -2,18 +2,25 @@ from pathlib import Path
 import fitz
 from typing import List, Optional
 from statement_analyser_personal.logger import get_logger
+from statement_analyser_personal.app.banks.statement_passwords import get_password_from_bank
 
 logger = get_logger(__name__)
 
 class TextExtractor:
     @staticmethod
-    def extract_text(pdf_path: str, password: Optional[str] = None) -> List[str]:
+    def extract_text(pdf_path: str) -> List[str]:
         """Extract text from PDF and automatically save raw text file"""
         try:
-            doc = fitz.open(pdf_path)
-            if doc.is_encrypted:
-                if not password or not doc.authenticate(password):
-                    raise ValueError("Failed to decrypt PDF")
+            while True:
+                password = get_password_from_bank()
+                doc = fitz.open(pdf_path)
+                if doc.is_encrypted:
+                    if not password or not doc.authenticate(password):
+                        print("❌ Incorrect password. Please try again.")
+                        logger.info("Incorrect password. Prompting user to ty again")
+                        continue
+                break
+            logger.info("Received correct password. Proceeding with text extraction.")
             
             lines = [
                 line.strip() for page in doc

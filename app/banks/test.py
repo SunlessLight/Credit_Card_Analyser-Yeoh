@@ -119,7 +119,7 @@ class TestRHB():
           return self.bank.process_date(self.lines)
 
 
-#hlb 1  c:\Users\User\OneDrive\Documents\Credit_card_programme\credit_card_statements\first record\WISE VISA GOLD 032025.pdf
+#hlb  1 c:\Users\User\OneDrive\Documents\Credit_card_programme\credit_card_statements\first record\WISE VISA GOLD 032025.pdf
 #     2  c:\Users\User\OneDrive\Documents\Credit_card_programme\credit_card_statements\second record\WISE VISA GOLD 042025.pdf
 
 # pbb 02APR1969
