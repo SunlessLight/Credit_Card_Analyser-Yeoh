@@ -113,6 +113,23 @@ class CreditCardGUI:
         win.title("New Bank?")
         win.grab_set()  # Make modal
 
+        # Center the popup over the main window
+        self.root.update_idletasks()
+        root_x = self.root.winfo_x()
+        root_y = self.root.winfo_y()
+        root_w = self.root.winfo_width()
+        root_h = self.root.winfo_height()
+        win.update_idletasks()
+        win_w = win.winfo_width()
+        win_h = win.winfo_height()
+        # If win_w/h are 1 (not yet drawn), set a default size
+        if win_w < 50: win_w = 250
+        if win_h < 50: win_h = 120
+        x = root_x + (root_w // 2) - (win_w // 2)
+        y = root_y + (root_h // 2) - (win_h // 2)
+        win.geometry(f"{win_w}x{win_h}+{x}+{y}")
+
+
         tk.Label(win, text="Is this a new bank?").pack(padx=20, pady=10)
         result = {"choice": None}
 
