@@ -149,6 +149,9 @@ class ExcelManager(JSONFileHandler):
 
         try:
             wb = load_workbook(excel_path)
+            if self.bank_name in wb.sheetnames:
+                logger.error(f"Sheet '{self.bank_name}' already exists in the workbook.")
+                raise RuntimeError(f"Sheet '{self.bank_name}' already exists in the workbook.")
             ws = wb.create_sheet(self.bank_name)
 
             logger.info(f"Inserting header for new bank")

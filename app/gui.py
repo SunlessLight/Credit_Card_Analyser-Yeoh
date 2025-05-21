@@ -44,25 +44,27 @@ class CreditCardGUI:
         self.result_text = tk.Text(self.root, height=8, width=80, state="disabled")
         self.result_text.pack(pady=5)
 
+        # New or update Excel
+        self.excel_mode = tk.StringVar(value="c")
+        frame = tk.Frame(self.root)
+        frame.pack(pady=5)
+        tk.Radiobutton(frame, text="Create New Excel", variable=self.excel_mode, value="c", command = self.update_excel_info).pack(side=tk.LEFT)
+        tk.Radiobutton(frame, text="Update Existing Excel", variable=self.excel_mode, value="u", command=self.update_excel_info).pack(side=tk.LEFT)
+
         # Excel file selection
         tk.Label(self.root, text="Excel File:").pack(pady=5)
         self.excel_entry = tk.Entry(self.root, width=60)
         self.excel_entry.pack()
         tk.Button(self.root, text="Browse Excel", command=self.select_excel).pack()
 
+        # Info label for Excel file selection
+        self.excel_info_label = tk.Label(self.root, text="", fg="blue")
+        self.excel_info_label.pack()
+
         # Record number
         tk.Label(self.root, text="Record Number:").pack(pady=5)
         self.record_entry = tk.Entry(self.root)
         self.record_entry.pack()
-
-        # New or update Excel
-        self.excel_mode = tk.StringVar(value="c")
-        frame = tk.Frame(self.root)
-        frame.pack(pady=5)
-        tk.Radiobutton(frame, text="Create New Excel", variable=self.excel_mode, value="c").pack(side=tk.LEFT)
-        tk.Radiobutton(frame, text="Update Existing Excel", variable=self.excel_mode, value="u").pack(side=tk.LEFT)
-
-        
 
         # Button to run Excel operation
         tk.Button(self.root, text="Run Excel Operation", command=self.run_excel_operation).pack(pady=10)
@@ -71,6 +73,17 @@ class CreditCardGUI:
         self.status_label = tk.Label(self.root, text="", fg="green")
         self.status_label.pack(pady=5)
 
+        self.update_excel_info()
+
+    def update_excel_info(self):
+        if self.excel_mode.get() == "c":
+            self.excel_info_label.config(
+                text = "(Leave Excel file box blank. A new Excel file will be created.)"
+            )
+        else:
+            self.excel_info_label.config(
+                text="(Please select an existing Excel file created by this program.)"
+            )
 
     def select_pdf(self):
         while True:
@@ -233,7 +246,9 @@ class CreditCardGUI:
         except Exception as e:
             logger.error(f"Excel operation failed: {e}")
             error_msg = str(e)
-            if "permission denied" in error_msg.lower():
+            if "already exists" in error_msg.lower():
+                user_msg = ("Worksheet for this bank already exists. Please retry and choose 'No' when asked after choosing update existing excel.")
+            elif "permission denied" in error_msg.lower():
                 user_msg = "Permission denied. Please close the Excel file if it is opened"
             elif "not found in the workbook" in error_msg.lower():
                 user_msg = "Worksheet not found. Please choose (Update Existing Excel) -> (New Bank)"
