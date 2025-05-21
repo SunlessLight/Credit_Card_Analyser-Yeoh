@@ -1,9 +1,6 @@
-from pathlib import Path
-from copy import copy
 from openpyxl.worksheet import worksheet
-import json
-import os
 from openpyxl import load_workbook
+from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font, Border, PatternFill, Protection, Alignment
 from openpyxl import Workbook
 from typing import Dict, List
@@ -43,8 +40,8 @@ class ExcelManager(JSONFileHandler):
         ws[f"B{4 + (record_no -1)*8}"] = data["statement_date"]
         ws[f"B{8 + (record_no -1)*8}"] = "Payment Due Date"
         ws[f"B{9 + (record_no -1)*8}"] = data["payment_date"]
-        ws.column_dimensions["B"].width = 16
-        ws.column_dimensions["C"].width = 16.
+        ws.column_dimensions["B"].width = 17
+        ws.column_dimensions["C"].width = 17
         for i, header in enumerate(list, start = 1):
             i += 2+(record_no-1)*8
             ws[f"C{i}"] = header
@@ -62,6 +59,7 @@ class ExcelManager(JSONFileHandler):
                 ws.cell(row= 7+(record_no-1)*8, column = i, value = values["retail_purchase"]),    
                 ws.cell(row= 8+(record_no-1)*8, column = i, value = values["balance_due"]),
                 ws.cell(row= 9+(record_no-1)*8, column = i, value = values["minimum_payment"]),
+                ws.column_dimensions[get_column_letter(i)].width = 11
         logger.info(f"Excel file updated successfully")
         
     

@@ -1,5 +1,6 @@
 from pathlib import Path
 import fitz
+import os
 from typing import List, Optional
 from statement_analyser_personal.logger import get_logger
 from statement_analyser_personal.app.banks.statement_passwords import get_password_from_bank
@@ -8,7 +9,7 @@ logger = get_logger(__name__)
 
 class TextExtractor:
     @staticmethod
-    def extract_text(pdf_path: str, password: str = None) -> List[str]:
+    def extract_text(pdf_path: str,bank_name:str,  password: str = None) -> List[str]:
         """Extract text from PDF and automatically save raw text file"""
         try:
             
@@ -27,7 +28,10 @@ class TextExtractor:
             ]
             
             # Always save raw text
-            text_path = str(Path(pdf_path).with_suffix('.raw.txt'))
+            data_folder = os.path.join(os.path.expanduser("~"), "Documents", "Credit Card Tracker")
+            os.makedirs(data_folder, exist_ok=True)
+
+            text_path = os.path.join(data_folder, f"{bank_name}raw.txt")
             with open(text_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(lines))
             logger.info(f"Saved raw text to: {text_path}")
@@ -38,10 +42,12 @@ class TextExtractor:
             raise RuntimeError(f"PDF extraction failed: {str(e)}")
 
     @staticmethod
-    def save_blocks(pdf_path: str, blocks: dict):
+    def save_blocks(bank_name:str, blocks: dict):
         try:
             """Save parsed blocks to file"""
-            blocks_path = str(Path(pdf_path).with_suffix('.blocks.txt'))
+            data_folder = os.path.join(os.path.expanduser("~"), "Documents", "Credit Card Tracker")
+            os.makedirs(data_folder, exist_ok=True)
+            blocks_path = os.join(data_folder, f"{bank_name}blocks.txt")
             with open(blocks_path, "w", encoding="utf-8") as f:
                 for card, block_lines in blocks.items():
                     f.write(f"===== Card: {card} =====\n")

@@ -41,7 +41,7 @@ class CreditCardGUI:
         tk.Button(self.root, text="Parse Statement", command=self.parse_statement).pack(pady=10)
 
         # Show result area
-        self.result_text = tk.Text(self.root, height=8, width=75, state="disabled")
+        self.result_text = tk.Text(self.root, height=8, width=80, state="disabled")
         self.result_text.pack(pady=5)
 
         # Excel file selection
@@ -124,6 +124,7 @@ class CreditCardGUI:
             return
         try:
             self.processor = CreditCardProcessor(bank)
+         
             logger.info(f"Processor initialised for bank: {bank}")
             # Show result in text area
             self.result_text.config(state="normal")
@@ -132,7 +133,7 @@ class CreditCardGUI:
             # Password handling loop
             while True:
                 try:
-                    result, dates = self.processor.parse_statement(pdf_path, password=password)
+                    result, dates = self.processor.parse_statement(pdf_path,bank, password=password)
                     break
                 except Exception as e:
                     logger.error(f"Error parsing statement: {e}")
@@ -231,8 +232,15 @@ class CreditCardGUI:
                     messagebox.showinfo("Success", "Excel file updated successfully.")
         except Exception as e:
             logger.error(f"Excel operation failed: {e}")
-            self.status_label.config(text=f"Error: {e}", fg="red")
-            messagebox.showerror("Error", str(e))
+            error_msg = str(e)
+            if "permission denied" in error_msg.lower():
+                user_msg = "Permission denied. Please close the Excel file if it is opened"
+            elif "not found in the workbook" in error_msg.lower():
+                user_msg = "Worksheet not found. Please choose (Update Existing Excel) -> (New Bank)"
+            else:
+                user_msg = f"An error occurred: {error_msg}"
+            self.status_label.config(text=f"Error:{user_msg}", fg="red")
+            messagebox.showerror("Error", user_msg)
 
     def format_results(self, result: dict, dates: dict) -> str:
         lines = []
