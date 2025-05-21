@@ -5,11 +5,10 @@ from openpyxl.styles import Font, Border, PatternFill, Protection, Alignment
 from openpyxl import Workbook
 from typing import Dict, List
 from statement_analyser_personal.logger import get_logger
-from statement_analyser_personal.app.processor_tools.json_file_handling import JSONFileHandler
 
 logger = get_logger(__name__)
 
-class ExcelManager(JSONFileHandler):
+class ExcelManager():
     def __init__(self, bank_name:str, date:Dict[str,str], results:Dict[str, Dict[str,float]]):
         self.bank_name = bank_name
         self.date = date
@@ -67,10 +66,14 @@ class ExcelManager(JSONFileHandler):
     def create_excel_file(self, save_path = None):
         logger.info(f"Creating new Excel file")
 
-        logger.info(f"Creating new json file")
-        self.create_json_file()
+        data = {
+            "record_number" : 1,
+            "statement_date" : self.date["statement_date"],
+            "payment_date" : self.date["payment_date"],
+            "bank_name" : self.bank_name,
+            "results1" : self.results
+        }
 
-        data = self.open_json()
         try:
             wb = Workbook()
             ws = wb.active
@@ -101,13 +104,13 @@ class ExcelManager(JSONFileHandler):
     
 
     def update_excel(self, excel_path:str, record_no: int):
-
-        logger.info(f"Getting record number")
-        self.update_json(record_no)
-
-        data = self.open_json()
-
-        logger.info(f"loading data for updating excel")
+        data = {
+            "record_number" : record_no,
+            "statement_date" : self.date["statement_date"],
+            "payment_date" : self.date["payment_date"],
+            "bank_name" : self.bank_name,
+            f"results{record_no}" : self.results
+        }
         
         try:
             wb = load_workbook(excel_path)
@@ -141,11 +144,14 @@ class ExcelManager(JSONFileHandler):
     def insert_new_bank(self, excel_path:str):
 
         logger.info(f"Creating new bank in existing excel file")
-
-        logger.info(f"Creating new json file")
-        self.create_json_file()
         
-        data = self.open_json()
+        data = {
+            "record_number" : 1,
+            "statement_date" : self.date["statement_date"],
+            "payment_date" : self.date["payment_date"],
+            "bank_name" : self.bank_name,
+            "results1" : self.results
+        }
 
         try:
             wb = load_workbook(excel_path)

@@ -26,32 +26,12 @@ class TextExtractor:
                 for line in page.get_text("text").split("\n")
                 if line.strip()
             ]
-            
-            # Always save raw text
-            data_folder = os.path.join(os.path.expanduser("~"), "Documents", "Credit Card Tracker")
-            os.makedirs(data_folder, exist_ok=True)
-
-            text_path = os.path.join(data_folder, f"{bank_name}raw.txt")
-            with open(text_path, "w", encoding="utf-8") as f:
-                f.write("\n".join(lines))
-            logger.info(f"Saved raw text to: {text_path}")
+            logger_lines = "\n".join(lines)
+            logger.info(f"Extracted text for {bank_name}:\n {logger_lines}")
             
             return lines
             
         except Exception as e:
             raise RuntimeError(f"PDF extraction failed: {str(e)}")
 
-    @staticmethod
-    def save_blocks(bank_name:str, blocks: dict):
-        try:
-            """Save parsed blocks to file"""
-            data_folder = os.path.join(os.path.expanduser("~"), "Documents", "Credit Card Tracker")
-            os.makedirs(data_folder, exist_ok=True)
-            blocks_path = os.join(data_folder, f"{bank_name}blocks.txt")
-            with open(blocks_path, "w", encoding="utf-8") as f:
-                for card, block_lines in blocks.items():
-                    f.write(f"===== Card: {card} =====\n")
-                    f.write("\n".join(block_lines) + "\n\n")
-            logger.info(f"Saved blocks to: {blocks_path}")
-        except Exception as e:
-            logger.error(f"Encountered error: {e}")
+    

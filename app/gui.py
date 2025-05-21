@@ -223,6 +223,7 @@ class CreditCardGUI:
             return
         excel_path = self.excel_entry.get()
         record_no = self.record_entry.get()
+        logger.info("getting record number")
         if self.excel_mode.get() == "u" and not excel_path:
             messagebox.showerror("Missing Info", "Please select an Excel file to update.")
             return

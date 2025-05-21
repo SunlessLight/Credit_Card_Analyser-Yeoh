@@ -25,8 +25,6 @@ class CreditCardProcessor:
         lines = TextExtractor.extract_text(pdf_path, bank_name, password = password)  # extract_text now saves raw text
         blocks = self.bank.create_blocks(lines)
         
-        TextExtractor.save_blocks(bank_name, blocks)
-        
         if hasattr(self.bank, "extract"):
             results = self.bank.extract(lines)
             dates = self.bank.process_date(lines)

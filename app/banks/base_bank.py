@@ -90,7 +90,10 @@ class BaseBank(ABC):
 
         if not blocks:
             logger.warning("No blocks were created. Check if the input lines contain valid data.")
-        logger.debug(f"Finished creating blocks: {blocks.keys()}")
+        logger.info("Finished creating blocks")
+        for key, block in blocks.items():
+            logger.info(f"====Card: {key}====\n")
+            logger.info("\n".join(block) + "\n\n")
         return blocks
 
     @abstractmethod
