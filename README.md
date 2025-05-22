@@ -1,0 +1,1 @@
+this is a simple credit card tracker where you enter your credit card statement and it will extract key financial information and paste them onto an excel sheet. It can also update existing excel sheets for better comparison between months
