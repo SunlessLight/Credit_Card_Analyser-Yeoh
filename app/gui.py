@@ -73,7 +73,26 @@ class CreditCardGUI:
         self.status_label = tk.Label(self.root, text="", fg="green")
         self.status_label.pack(pady=5)
 
+        # Help/Introduction button at bottom right
+        help_btn = tk.Button(self.root, text="Help / Introduction", command=self.show_help)
+        help_btn.place(relx=1.0, rely=1.0, anchor="se", x=-10, y=-10)  # 10px from bottom right
+
         self.update_excel_info()
+
+    def show_help(self):
+        messagebox.showinfo(
+            "Introduction / Help",
+            "Welcome to Statement Analyser!\n\n"
+            "This program helps you extract key financial information from your credit card statements and\n paste them into an excel file for easy tracking.\n\n"
+            "1. Select your bank and statement PDF.\n"
+            "2. Enter password if needed.\n"
+            "3. Choose to create a new Excel file or update an existing one.\n"
+            "4. Do note that 1 excel file can has multiple sheets for different banks.\n"
+            "5. For updating, select the Excel file created by this program.\n"
+            "6. Enter the record number (usually 1 for new statements).\n"
+            "7. For new banks, select update existing excel and chose 'yes' when asked for new bank or not.\n"
+            "Note: Ensure the Excel file is closed before updating.\n"
+        )
 
     def update_excel_info(self):
         if self.excel_mode.get() == "c":
@@ -217,6 +236,8 @@ class CreditCardGUI:
         self.root.wait_window(pw_win)
         return result["password"]
 
+    
+
     def run_excel_operation(self):
         if not self.excel_manager:
             messagebox.showerror("Error", "Please parse a statement first.")
@@ -249,18 +270,14 @@ class CreditCardGUI:
                 self.status_label.config(text="Excel file created.", fg="green")
                 messagebox.showinfo("Success", "Excel file created successfully.")
             elif self.excel_mode.get() == "u":
-                new_bank_choice = self.ask_new_bank()
-                if new_bank_choice is None:
-                    messagebox.showwarning("Cancelled", "Operation cancelled by user.")
-                    return
-                if new_bank_choice == "y":
-                    self.excel_manager.insert_new_bank(excel_path)
-                    self.status_label.config(text="New bank inserted.", fg="green")
-                    messagebox.showinfo("Success", "New bank inserted successfully.")
-                else:
-                    self.excel_manager.update_excel(excel_path, record_no)
-                    self.status_label.config(text="Excel file updated.", fg="green")
-                    messagebox.showinfo("Success", "Excel file updated successfully.")
+                
+                result_status = self.excel_manager.update_excel(excel_path, record_no)
+                if result_status == "inserted":
+                    self.status_label.config(text=f"New bank detected, inserting new excel sheet with name {self.processor.bank_name}", fg="green")
+                    messagebox.showinfo("Success", f"New bank detected, inserted new excel sheet with name {self.processor.bank_name}")
+                elif result_status == "updated":
+                    self.status_label.config(text=f"Bank sheet detected, successfully updated it", fg="green")
+                    messagebox.showinfo("Success", f"Bank sheet detected, successfully updated it")
         except Exception as e:
             logger.error(f"Excel operation failed: {e}")
             error_msg = str(e)

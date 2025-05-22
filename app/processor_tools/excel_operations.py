@@ -34,13 +34,15 @@ class ExcelManager():
         list = ["Card No.", "Previous Balance", "Credit Payment", "Debit Fees", "Retail Purchases", "Balance Due", "Minimum Payment"]
         ws[f"A{3 + (record_no -1)*8}"] = "Record No."
         ws[f"A{4 + (record_no -1)*8}"] = data["record_number"]
-        ws.column_dimensions["A"].width = 10
+        ws[f"D{3 + (record_no -1)*8}"] = "Total"
         ws[f"B{3 + (record_no -1)*8}"] = "Statement Date"
         ws[f"B{4 + (record_no -1)*8}"] = data["statement_date"]
         ws[f"B{8 + (record_no -1)*8}"] = "Payment Due Date"
         ws[f"B{9 + (record_no -1)*8}"] = data["payment_date"]
+        ws.column_dimensions["A"].width = 10
         ws.column_dimensions["B"].width = 17
         ws.column_dimensions["C"].width = 17
+        ws.column_dimensions["D"].width = 12
         for i, header in enumerate(list, start = 1):
             i += 2+(record_no-1)*8
             ws[f"C{i}"] = header
@@ -48,8 +50,12 @@ class ExcelManager():
 
     def insert_key_value(self, ws:worksheet, record_no:int, result: Dict[str, Dict[str,float]]):
         logger.info(f"Writing result to excel")
+        start_col = 5
+        end_col = 30
+        start_letter = get_column_letter(start_col)
+        end_letter = get_column_letter(end_col)
         for i, (card, values) in enumerate(result.items(), start = 1):
-                i += 3
+                i += 4
                 ws.cell(row= 3+(record_no-1)*8, column = i, value = card)
                 ws.cell(row= 3+(record_no-1)*8, column = i).font = Font(bold = True)
                 ws.cell(row= 4+(record_no-1)*8, column = i, value = values["previous_balance"]),
@@ -58,7 +64,9 @@ class ExcelManager():
                 ws.cell(row= 7+(record_no-1)*8, column = i, value = values["retail_purchase"]),    
                 ws.cell(row= 8+(record_no-1)*8, column = i, value = values["balance_due"]),
                 ws.cell(row= 9+(record_no-1)*8, column = i, value = values["minimum_payment"]),
-                ws.column_dimensions[get_column_letter(i)].width = 11
+                ws.column_dimensions[get_column_letter(i)].width = 11      
+        for row in range(4+(record_no-1)*8, 10+(record_no-1)*8):
+            ws[f"D{row}"] = f"=SUM({start_letter}{row}:{end_letter}{row})"
         logger.info(f"Excel file updated successfully")
         
     
@@ -119,63 +127,40 @@ class ExcelManager():
             if self.bank_name in wb.sheetnames:
                 ws = wb[self.bank_name]
                 logger.info(f"Sheet '{self.bank_name}' found in the workbook.")
+
+                self.insert_everything(ws, record_no, data)
+                wb.save(excel_path)
+                logger.info(f"Excel file updated successdully")
+                return "updated"
             else:
-                raise ValueError(f"Sheet '{self.bank_name}' not found in the workbook.")
-            
-            self.insert_header(ws, record_no, data)
-
-            result = data[f"results{record_no}"]
-            logger.info(f"Writing result to excel")
-
-            self.insert_key_value(ws, record_no, result)
-
-            
-            self.set_alignment(ws, record_no, result)
-
-
-            wb.save(excel_path)
-            logger.info(f"Excel file updated successfully")
-            
-
+                logger.info("No bank sheet detected in available sheets, creating new one")
+                ws = wb.create_sheet(self.bank_name)
+        
+                self.insert_everything(ws, record_no, data)
+                wb.save(excel_path)
+                logger.info(f"New sheet inserted successfully")
+                return "nserted"
         except Exception as e:
             logger.error(f"Failed to update Excel file: {e}")
             raise RuntimeError(f"Failed to update Excel file: {str(e)}")
 
-    def insert_new_bank(self, excel_path:str):
-
-        logger.info(f"Creating new bank in existing excel file")
+    def insert_everything(self, ws: worksheet, record_no:int, data: Dict[str,str]):
         
-        data = {
-            "record_number" : 1,
-            "statement_date" : self.date["statement_date"],
-            "payment_date" : self.date["payment_date"],
-            "bank_name" : self.bank_name,
-            "results1" : self.results
-        }
-
         try:
-            wb = load_workbook(excel_path)
-            if self.bank_name in wb.sheetnames:
-                logger.error(f"Sheet '{self.bank_name}' already exists in the workbook.")
-                raise RuntimeError(f"Sheet '{self.bank_name}' already exists in the workbook.")
-            ws = wb.create_sheet(self.bank_name)
 
             logger.info(f"Inserting header for new bank")
-            self.insert_header(ws, 1, data)
+            self.insert_header(ws, record_no, data)
 
-            result = data["results1"]
+            result = data[f"results{record_no}"]
 
             logger.info(f"Writing result to excel")
-            self.insert_key_value(ws, 1, result)
+            self.insert_key_value(ws, record_no, result)
 
-            self.set_alignment(ws, 1, result)
-
-            wb.save(excel_path)
-            logger.info(f"Excel file updated successfully")
-            
-
+            self.set_alignment(ws, record_no, result)
+            logger.info(f"Finished setting alignment in excel.")
+    
         except Exception as e:
-            logger.error(f"Failed to create Excel file: {e}")
+            logger.error(f"Failed to insert info: {e}")
             raise RuntimeError(f"Failed to create Excel file: {str(e)}")
 
     
