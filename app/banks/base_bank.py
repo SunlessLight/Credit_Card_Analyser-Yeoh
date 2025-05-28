@@ -71,6 +71,10 @@ class BaseBank(ABC):
                     current_card = card_match.group(2)
                     logger.debug(f"Detected card number: {current_card}")
                     current_block = [line]
+                    
+                    two_lines_in_one =  " ".join(lines[lines.index(line)-2: lines.index(line)+2]).strip()
+                    current_block.append(two_lines_in_one)
+                    logger.info(f"Appended {two_lines_in_one} to current block for card: {current_card}")
                     in_block = True
                     continue
                 
@@ -104,6 +108,7 @@ class BaseBank(ABC):
     @classmethod
     def base_data(self):
         return {
+            "card_name" : None,
             "previous_balance": 0.00,
             "credit_payment": 0.00,
             "debit_fees": 0.00,

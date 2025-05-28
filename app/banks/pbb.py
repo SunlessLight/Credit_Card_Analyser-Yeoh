@@ -97,11 +97,16 @@ class PBB(BaseBank):
         if data["debit_fees"] is not None:
             data["retail_purchase"] -= data["debit_fees"]
         logger.debug(f"Processed block data: {data}")
+        for key in data:
+            if isinstance(data[key],(int,float)):
+                data[key] = round(data[key],2)
+                logger.info(f"Rounded amount : {data[key]}")
+        logger.info(f"Final rounded data: {data}")
         return data
 
-    def extract_minimum_payments_from_text(self, lines: List[str]) -> Dict[str, float]:
+    def extract_minimum_payments_and_name_from_text(self, lines: List[str]) -> Dict[str, float]:
         logger.debug("Extracting minimum payments from text.")
-        card_minimums = {}
+        data = {}
         
         for i, line in enumerate(lines):
             try:
@@ -109,17 +114,31 @@ class PBB(BaseBank):
                 if match and i + 3 < len(lines):
                     last4 = match.group(2)
                     logger.debug(f"Detected card number: {last4}")
+                    if last4 not in data:
+                        data[last4] = {}
                     amount = self.extract_amount(lines[i + 3])
+                    data[last4]["minimum_payment"] = 0.00
                     if amount is not None:
-                        card_minimums[last4] = amount
+                        logger.debug(f"Inserting amount into data dict")
+                        data[last4]["minimum_payment"] = amount
                         logger.debug(f"Extracted minimum payment for card {last4}: {amount}")
+                    text = lines[i+1].strip()
+                    logger.info("Starting name extraction")
+                    name = re.findall(r"[A-Za-z]+", text)
+                    result = " ".join(name).strip()
+                    if result:
+                        data[last4]["card_name"] = result
+                        logger.info(f"Extracted {result} as card name for {last4}")
                 if  any(kw in line for kw in self.config.end_keywords):
                         logger.debug("End keywords found, stopping extraction.")
                         break    
                     
             except Exception as e:
                 logger.error(f"Error extracting minimum payment from line: {line}. Error: {e}")
-        return card_minimums
+        if not data:
+            logger.warning("No minimum payments were extracted. Check if the input lines contain valid data.")
+        logger.debug(f"Extracted minimum payments and card name: {data}")
+        return data
 
     def extract(self, lines: List[str]) -> Dict[str, Dict[str, float]]:
         logger.debug("Starting extraction process.")
@@ -129,15 +148,16 @@ class PBB(BaseBank):
             results = {}
 
             # Extract card -> minimum payment mapping from full text
-            min_payments = self.extract_minimum_payments_from_text(lines)
-            logger.debug(f"Minimum payments extracted: {min_payments}")
+            card = self.extract_minimum_payments_and_name_from_text(lines)
+            logger.debug(f"Loading card data: {card}")
 
             # Process each card block
             for key, block in blocks.items():
                 logger.debug(f"Processing block for card: {key}")
                 results[key] = self.process_block(block)
-                if key in min_payments:
-                    results[key]["minimum_payment"] = min_payments[key]
+                if key in card:
+                    results[key]["minimum_payment"] = card[key]["minimum_payment"]
+                    results[key]["card_name"] = card[key]["card_name"]
 
             logger.debug(f"Extraction results: {results}")
             return results

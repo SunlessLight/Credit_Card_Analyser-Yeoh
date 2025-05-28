@@ -28,11 +28,27 @@ class CreditCardProcessor:
         if hasattr(self.bank, "extract"):
             results = self.bank.extract(lines)
             dates = self.bank.process_date(lines)
+            logger.info("parse_statement: Starting to remove CR from card name")
+            for card, result in results.items():
+                name = result["card_name"]
+                if "CR" in name:
+                    new_name = name.replace("CR", "")
+                    result["card_name"] = new_name
+                    logger.info(f"Removed CR from card name: {name}. Now is {new_name}")
+                else:
+                    logger.info(f"No CR in card name: {name}")
             return results,dates
         else:
             results = {card: self.bank.process_block(block)
                 for card, block in blocks.items()}
             dates = self.bank.process_date(lines)
+            logger.info("parse_statement: Starting to remove CR from card name")
+            for card, result in results.items():
+                name = result["card_name"]
+                if "CR" in name:
+                    new_name = name.replace("CR", "")
+                    result["card_name"] = new_name
+                    logger.info(f"Removed CR from card name: {name}. Now is {new_name}")
             return results,dates
     
         

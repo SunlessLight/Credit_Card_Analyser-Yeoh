@@ -63,6 +63,13 @@ class HLB(BaseBank):
             logger.debug(f"Processing line: {line}")
             
             try:
+                text = block[0].strip()
+                matches = re.findall(r"[A-Za-z]+", text)
+                name = " ".join(matches).strip()
+                if name:
+                    data["card_name"] = name
+                    logger.debug(f"Extracted card name: {data['card_name']} ")
+                
                 # Previous Balance
                 if any(kw in line for kw in self.config.previous_balance_keywords):    
                     self.extract_previous_balance(next_line, data)
@@ -93,8 +100,11 @@ class HLB(BaseBank):
             i += 1
 
         logger.debug(f"Processed block data: {data}")
+        logger.info("Starting rounding values")
         for key in data:
-            data[key] = round(data[key],2)
+            if isinstance(data[key], (float, int)):
+                data[key] = round(data[key], 2)
+        logger.info(f"Final rounded data: {data}")
         return data
 
     def extract_minimum_payments_from_text(self, lines: List[str]) -> Dict[str, float]:

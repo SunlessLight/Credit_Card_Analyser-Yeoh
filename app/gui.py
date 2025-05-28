@@ -61,11 +61,6 @@ class CreditCardGUI:
         self.excel_info_label = tk.Label(self.root, text="", fg="blue")
         self.excel_info_label.pack()
 
-        # Record number
-        tk.Label(self.root, text="Record Number:").pack(pady=5)
-        self.record_entry = tk.Entry(self.root)
-        self.record_entry.pack()
-
         # Button to run Excel operation
         tk.Button(self.root, text="Run Excel Operation", command=self.run_excel_operation).pack(pady=10)
 
@@ -80,29 +75,41 @@ class CreditCardGUI:
         self.update_excel_info()
 
     def show_help(self):
-        messagebox.showinfo(
-            "Introduction / Help",
+        help_text = (
             "Welcome to Statement Analyser!\n\n"
-            "This program helps you extract key financial information from your credit card statements and\n paste them into an excel file for easy tracking.\n\n"
-            "1. Select your bank and statement PDF.\n"
-            "2. Enter password if needed.\n"
-            "3. Choose to create a new Excel file or update an existing one.\n"
-            "4. Do note that 1 excel file can has multiple sheets for different banks.\n"
-            "5. For updating, select the Excel file created by this program.\n"
-            "6. Enter the record number (usually 1 for new statements).\n"
-            "7. For new banks, select update existing excel and chose 'yes' when asked for new bank or not.\n"
-            "Note: Ensure the Excel file is closed before updating.\n"
+            "This program helps you extract key financial information from your credit card statements and\n"
+            "paste them into an excel file for easy tracking.\n\n"
+            "1. Select your bank and statement PDF.\n\n"
+            "2. Enter password if needed.\n\n"
+            "3. Choose to create a new Excel file or update an existing one (only after you have created an excel file).\n\n"
+            "4. For updating credit card of same bank, reselect new pdf and click update excel.A 2nd record will appear on the excel sheet with name of bank\n\n"
+            "5. For updating excel file with credit card of new bank, reselect bank and pdf of choice, click update excel, select the excel file. A new record will appear on a new excel sheet with name of bank\n\n"
+            "6. A 'Total' sheet will be created to show balance due, minimum payment and due date for the latest info of all banks in your excel file\n\n"
+            "Note: Ensure the Excel file is closed before updating.\n\n"
         )
+        help_win = tk.Toplevel(self.root)
+        help_win.title("Introduction / Help")
+        help_win.geometry("600x500")  # Set desired size
 
+        text_widget = tk.Text(help_win, wrap="word")
+        text_widget.insert("1.0", help_text)
+        text_widget.config(state="disabled")
+        text_widget.pack(expand=True, fill="both", padx=10, pady=10)
+
+        scrollbar = tk.Scrollbar(help_win, command=text_widget.yview)
+        text_widget.config(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+
+        tk.Button(help_win, text="Close", command=help_win.destroy).pack(pady=5)
     def update_excel_info(self):
         if self.excel_mode.get() == "c":
-            self.excel_info_label.config(
+             self.excel_info_label.config(
                 text = "(Leave Excel file box blank. A new Excel file will be created.)"
-            )
+                )
         else:
             self.excel_info_label.config(
                 text="(Please select an existing Excel file created by this program.)"
-            )
+                )
 
     def select_pdf(self):
         while True:
@@ -125,44 +132,6 @@ class CreditCardGUI:
                 self.excel_entry.delete(0, tk.END)
                 self.excel_entry.insert(0, path)
                 break
-
-    def ask_new_bank(self):
-        """Popup dialog to ask if this is a new bank."""
-        win = tk.Toplevel(self.root)
-        win.title("New Bank?")
-        win.grab_set()  # Make modal
-
-        # Center the popup over the main window
-        self.root.update_idletasks()
-        root_x = self.root.winfo_x()
-        root_y = self.root.winfo_y()
-        root_w = self.root.winfo_width()
-        root_h = self.root.winfo_height()
-        win.update_idletasks()
-        win_w = win.winfo_width()
-        win_h = win.winfo_height()
-        # If win_w/h are 1 (not yet drawn), set a default size
-        if win_w < 50: win_w = 250
-        if win_h < 50: win_h = 120
-        x = root_x + (root_w // 2) - (win_w // 2)
-        y = root_y + (root_h // 2) - (win_h // 2)
-        win.geometry(f"{win_w}x{win_h}+{x}+{y}")
-
-
-        tk.Label(win, text="Is this a new bank?").pack(padx=20, pady=10)
-        result = {"choice": None}
-
-        def choose(choice):
-            result["choice"] = choice
-            win.destroy()
-
-        btn_frame = tk.Frame(win)
-        btn_frame.pack(pady=10)
-        tk.Button(btn_frame, text="Yes", width=10, command=lambda: choose("y")).pack(side=tk.LEFT, padx=5)
-        tk.Button(btn_frame, text="No", width=10, command=lambda: choose("n")).pack(side=tk.LEFT, padx=5)
-
-        self.root.wait_window(win)
-        return result["choice"]
 
     def parse_statement(self):
         bank = self.bank_var.get()
@@ -196,6 +165,11 @@ class CreditCardGUI:
                         self.password_entry.delete(0, tk.END)
                         self.password_entry.insert(0, password)
                         continue
+                    elif "PDF MATCHING ERROR" in str(e):
+                        self.status_label.config(text=f"PDF matching error. Please choose the correct pdf for bank: {bank}.")
+                        messagebox.showerror("Error", f"PDF matching error. Please choose the correct pdf for bank: {bank}.")
+                        pdf_path = self.pdf_entry.get()
+                        return
                     else:
                         self.status_label.config(text=f"Error: {e}", fg="red")
                         messagebox.showerror("Error", str(e))
@@ -243,16 +217,9 @@ class CreditCardGUI:
             messagebox.showerror("Error", "Please parse a statement first.")
             return
         excel_path = self.excel_entry.get()
-        record_no = self.record_entry.get()
-        logger.info("getting record number")
+        
         if self.excel_mode.get() == "u" and not excel_path:
             messagebox.showerror("Missing Info", "Please select an Excel file to update.")
-            return
-        try:
-            record_no = int(record_no)
-            
-        except Exception:
-            messagebox.showerror("Invalid Input", "Record number must be an integer >= 1.")
             return
 
         try:
@@ -266,12 +233,12 @@ class CreditCardGUI:
                 if not save_path:
                     messagebox.showwarning("Cancelled", "Save cancelled by user.")
                     return
-                self.excel_manager.create_excel_file(save_path=save_path)
+                self.excel_manager.create_excel_file(save_path=save_path )
                 self.status_label.config(text="Excel file created.", fg="green")
                 messagebox.showinfo("Success", "Excel file created successfully.")
             elif self.excel_mode.get() == "u":
                 
-                result_status = self.excel_manager.update_excel(excel_path, record_no)
+                result_status = self.excel_manager.update_excel(excel_path)
                 if result_status == "inserted":
                     self.status_label.config(text=f"New bank detected, inserting new excel sheet with name {self.processor.bank_name}", fg="green")
                     messagebox.showinfo("Success", f"New bank detected, inserted new excel sheet with name {self.processor.bank_name}")
@@ -279,7 +246,7 @@ class CreditCardGUI:
                     self.status_label.config(text=f"Bank sheet detected, successfully updated it", fg="green")
                     messagebox.showinfo("Success", f"Bank sheet detected, successfully updated it")
         except Exception as e:
-            logger.error(f"Excel operation failed: {e}")
+            logger.error(f"gui: Excel operation failed: {e}")
             error_msg = str(e)
             if "already exists" in error_msg.lower():
                 user_msg = ("Worksheet for this bank already exists. Please retry and choose 'No' when asked after choosing update existing excel.")
