@@ -104,7 +104,7 @@ class RHB(BaseBank):
         
     
     def extract_minimum_payments_and_name_from_text(self, lines: List[str]) -> Dict[str, float]:
-        logger.debug("Extracting minimum payments from text.")
+        logger.debug("Extracting minimum payments and card name from text.")
         
         data =  {}
         for i, line in enumerate(lines):
@@ -153,7 +153,7 @@ class RHB(BaseBank):
                 results[key] = self.process_block(block)
                 if key in card:
                     logger.info(f"adding min pay and card name")
-                    results[key]["minimum_payment"] = card[key]["card_minimums"]
+                    results[key]["minimum_payment"] = card[key]["minimum_payment"]
                     results[key]["card_name"] = card[key]["card_name"]
                     logger.info(f"Finished inserting card name and minimum payment for card:{key}")
             logger.debug(f"Extraction results: {results}")

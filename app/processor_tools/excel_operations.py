@@ -35,8 +35,8 @@ class ExcelManager():
         ws[f"D{3 + (record_no -1)*9}"] = "Total"
         ws[f"B{2 + (record_no -1)*9}"] = "Statement Date"
         ws[f"B{3 + (record_no -1)*9}"] = data["statement_date"]
-        ws[f"B{7 + (record_no -1)*9}"] = "Payment Due Date"
-        ws[f"B{8 + (record_no -1)*9}"] = data["payment_date"]
+        ws[f"B{8 + (record_no -1)*9}"] = "Payment Due Date"
+        ws[f"B{9 + (record_no -1)*9}"] = data["payment_date"]
         ws.column_dimensions["A"].width = 10
         ws.column_dimensions["B"].width = 17
         ws.column_dimensions["C"].width = 17
@@ -253,9 +253,9 @@ class ExcelManager():
                 record_no = self.find_largest_record_no(ws)
                 logger.info(f"create_update_total_sheet: Getting data for {sheet}")
                 data[sheet] = {}
-                cell1 = ws[f'd{8+(record_no-1)*8}']
-                cell2 = ws[f'd{9+(record_no-1)*8}']
-                cell3 = ws[f'B{9+(record_no-1)*8}']
+                cell1 = ws[f'd{8+(record_no-1)*9}']
+                cell2 = ws[f'd{9+(record_no-1)*9}']
+                cell3 = ws[f'B{9+(record_no-1)*9}']
                 logger.info(f"Checking all cell values whether is formula/none/integer")
                 def get_cell_value(cell):
                     # If value is None, try to get the formula string
