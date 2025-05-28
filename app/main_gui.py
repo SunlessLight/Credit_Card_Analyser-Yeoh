@@ -1,6 +1,6 @@
 # main_gui.py
-from statement_analyser_personal.app.gui import main
-from statement_analyser_personal.logger import get_logger
+from credit_card_tracker.app.gui import main
+from credit_card_tracker.logger import get_logger
 
 logger = get_logger(__name__)
 

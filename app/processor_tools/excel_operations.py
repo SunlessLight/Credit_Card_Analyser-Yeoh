@@ -4,7 +4,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.styles import Font, Alignment
 from openpyxl import Workbook
 from typing import Dict
-from statement_analyser_personal.logger import get_logger
+from credit_card_tracker.logger import get_logger
 
 logger = get_logger(__name__)
 

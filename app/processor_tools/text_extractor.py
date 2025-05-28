@@ -1,8 +1,7 @@
-from pathlib import Path
 import fitz
 import re
-from typing import List, Optional
-from statement_analyser_personal.logger import get_logger
+from typing import List
+from credit_card_tracker.logger import get_logger
 
 
 logger = get_logger(__name__)

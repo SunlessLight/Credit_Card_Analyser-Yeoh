@@ -1,7 +1,7 @@
-from statement_analyser_personal.app.banks.base_bank import BaseBank, BankConfig
+from credit_card_tracker.app.banks.base_bank import BaseBank, BankConfig
 import re
 from typing import List, Dict, Union
-from statement_analyser_personal.logger import get_logger
+from credit_card_tracker.logger import get_logger
 
 logger = get_logger(__name__)
 

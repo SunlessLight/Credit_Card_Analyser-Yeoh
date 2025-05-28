@@ -1,7 +1,7 @@
 from typing import Dict, Optional
 from ..banks import UOB, HLB, MYB, RHB, PBB, CIMB
 from .text_extractor import TextExtractor
-from statement_analyser_personal.logger import get_logger
+from credit_card_tracker.logger import get_logger
 
 logger = get_logger(__name__)
 

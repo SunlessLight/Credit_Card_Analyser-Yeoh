@@ -1,10 +1,10 @@
-from statement_analyser_personal.app.processor_tools.excel_operations import ExcelManager
-from statement_analyser_personal.app.banks.test import TestUOB, TestHLB, TestCIMB, TestMYB, TestRHB, TestPBB
+from credit_card_tracker.app.processor_tools.excel_operations import ExcelManager
+from credit_card_tracker.app.banks.test import TestUOB, TestHLB, TestCIMB, TestMYB, TestRHB, TestPBB
 import os
 import json
 from typing import Dict
 from openpyxl import Workbook
-from statement_analyser_personal.logger import get_logger
+from credit_card_tracker.logger import get_logger
 logger = get_logger(__name__)
 
 result = TestUOB().test_process_block()

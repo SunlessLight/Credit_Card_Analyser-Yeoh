@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
-from statement_analyser_personal.app.processor_tools import ExcelManager, CreditCardProcessor
-from statement_analyser_personal.logger import get_logger
+from credit_card_tracker.app.processor_tools import ExcelManager, CreditCardProcessor
+from credit_card_tracker.logger import get_logger
 
 logger = get_logger(__name__)
 
