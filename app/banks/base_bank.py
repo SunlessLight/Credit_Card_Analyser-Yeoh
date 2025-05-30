@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Dict, Optional
 import re
-from statement_analyser_personal.logger import get_logger
+from credit_card_tracker.logger import get_logger
 
 logger = get_logger(__name__)
 
